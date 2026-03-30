@@ -350,6 +350,7 @@
         <button onclick="showPage('home')" id="nav-home">Home</button>
         <button onclick="showPage('picks')" id="nav-picks">My Team</button>
         <button onclick="showPage('leaderboard')" id="nav-leaderboard">Leaderboard</button>
+        <button onclick="showPage('tournament')" id="nav-tournament">Tournament</button>
         <button onclick="showPage('teams')" id="nav-teams">All Teams</button>
         <button onclick="showPage('admin')" id="nav-admin" class="hidden">Admin</button>
     </div>
@@ -515,6 +516,31 @@
             </div>
         </div>
 
+        <!-- Tournament Leaderboard Page -->
+        <div id="tournamentPage" class="hidden">
+            <div class="card">
+                <h2>🏆 Tournament Leaderboard
+                    <span id="tournamentUpdateBadge" style="font-size: 0.5em; font-weight: normal; color: #666;"></span>
+                </h2>
+                <p style="margin-bottom: 10px; color: #666;">Live scores from ESPN. Your picks are <strong style="color: #0a3d0a;">highlighted</strong>.</p>
+                <div id="tournamentLastUpdated" style="margin-bottom: 15px; font-size: 0.9em; color: #888;"></div>
+                <div class="leaderboard-wrap">
+                    <table class="leaderboard" id="tournamentLeaderboard">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>Score</th>
+                                <th>Thru</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Admin Page -->
         <div id="adminPage" class="hidden">
             <div class="card admin-section">
@@ -548,13 +574,13 @@
                         <div style="background: #e8f5e9; border: 2px solid #28a745; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
                             <h4 style="margin-bottom: 8px;">⚡ ESPN API — Direct &amp; Fast</h4>
                             <p style="font-size: 0.9em; line-height: 1.5;">Fetches scores directly from ESPN's JSON API. No Google Sheets needed. Near real-time data, updated every 60 seconds.</p>
-                            <p style="margin-top: 8px; font-size: 0.85em; color: #666;">This uses ESPN's public scoreboard API. It's been stable for years but is technically undocumented.</p>
+                            <p style="margin-top: 8px; font-size: 0.85em; color: #666;">Runs entirely client-side — <strong>zero Firebase writes</strong>. Each browser fetches ESPN directly. No database cost.</p>
                         </div>
 
                         <div class="form-group">
-                            <label>ESPN Tournament ID</label>
-                            <input type="text" id="espnTournamentId" placeholder="e.g. 401811941">
-                            <small style="color: #666;">The ESPN event ID for the tournament. Masters 2026 = <strong>401811941</strong>. Find it in the ESPN leaderboard URL.</small>
+                            <label>ESPN Tournament ID (optional)</label>
+                            <input type="text" id="espnTournamentId" placeholder="Leave blank for current tournament">
+                            <small style="color: #666;">Leave blank to auto-detect the current PGA tournament. Or enter a specific ID like <strong>401811941</strong> (found in the ESPN leaderboard URL).</small>
                         </div>
                         <div class="form-group">
                             <label>Refresh Interval (seconds)</label>
@@ -709,6 +735,7 @@
     let settingsData = {};     // Competition settings
     let scoringConfig = {};    // Scoring configuration (mode, url, etc.)
     let manualScoresData = {}; // Manual score overrides
+    let lastScoreUpdateTime = null; // ISO timestamp of last score update
     let dataLoaded = false;
 
     // Auto-refresh timer
@@ -869,6 +896,11 @@
             manualScoresData = snapshot.val() || {};
             refreshCurrentPage();
         });
+
+        db.ref('lastScoreUpdate').on('value', (snapshot) => {
+            lastScoreUpdateTime = snapshot.val() || null;
+            updateLastUpdatedDisplay();
+        });
     }
 
     function checkDataLoaded() {
@@ -885,6 +917,7 @@
             case 'home': renderHome(); break;
             case 'picks': renderPicks(); break;
             case 'leaderboard': renderLeaderboard(); break;
+            case 'tournament': renderTournamentLeaderboard(); break;
             case 'teams': renderAllTeams(); break;
             case 'admin': if (currentUser.isAdmin) renderAdmin(); break;
         }
@@ -912,10 +945,12 @@
     function setupAutoRefresh() {
         if (scoreRefreshTimer) clearInterval(scoreRefreshTimer);
 
-        if (scoringConfig.mode === 'espn' && scoringConfig.espnTournamentId) {
+        if (scoringConfig.mode === 'espn') {
             const interval = (scoringConfig.espnRefreshInterval || 60) * 1000;
-            fetchEspnScores();
-            scoreRefreshTimer = setInterval(fetchEspnScores, interval);
+            fetchEspnScores().catch(e => console.error('ESPN auto-fetch error:', e));
+            scoreRefreshTimer = setInterval(() => {
+                fetchEspnScores().catch(e => console.error('ESPN auto-fetch error:', e));
+            }, interval);
         } else if (scoringConfig.mode === 'auto' && scoringConfig.url) {
             const interval = (scoringConfig.refreshInterval || 60) * 1000;
             fetchLiveScores();
@@ -1060,17 +1095,18 @@
                 }
 
                 if (score !== undefined && !isNaN(score)) {
-                    newScores[matchedName] = {
+                    newScores[sanitizeKey(matchedName)] = {
                         score,
                         status,
                         thru: thru || 'F',
-                        today: todayRaw ? todayRaw.toString().trim() : ''
+                        today: todayRaw ? todayRaw.toString().trim() : '',
+                        displayName: matchedName
                     };
                 }
             });
 
-            // Save to Firebase
-            if (Object.keys(newScores).length > 0) {
+            // Save to Firebase only if scores changed
+            if (Object.keys(newScores).length > 0 && scoresChanged(newScores)) {
                 await db.ref('scores').set(newScores);
                 await db.ref('lastScoreUpdate').set(new Date().toISOString());
                 const now = new Date();
@@ -1085,19 +1121,23 @@
     // ---- ESPN API Direct Fetch ----
     async function fetchEspnScores() {
         const tournamentId = scoringConfig.espnTournamentId;
-        if (!tournamentId) {
-            console.warn('ESPN: No tournament ID configured');
-            return;
-        }
 
-        const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tournamentId)}`;
+        // Build URL — with or without specific tournament ID
+        const url = tournamentId
+            ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tournamentId)}`
+            : 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard';
         const response = await fetch(url);
         if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
         const data = await response.json();
 
-        // Find the event (usually the only one when queried by ID)
-        const event = data.events && data.events.find(e => String(e.id) === String(tournamentId));
-        if (!event) throw new Error('Tournament not found in ESPN response');
+        // Find the event — by ID if specified, otherwise take the first one
+        let event;
+        if (tournamentId) {
+            event = data.events && data.events.find(e => String(e.id) === String(tournamentId));
+        } else {
+            event = data.events && data.events[0];
+        }
+        if (!event) throw new Error('No tournament found in ESPN response');
 
         const competition = event.competitions && event.competitions[0];
         if (!competition || !competition.competitors) throw new Error('No competitor data in ESPN response');
@@ -1141,16 +1181,16 @@
             }
 
             if (score !== null && !isNaN(score)) {
-                newScores[matchedName] = { score, status, thru: thru || 'F', today: '' };
+                newScores[sanitizeKey(matchedName)] = { score, status, thru: thru || 'F', today: '', displayName: matchedName };
             }
         });
 
+        // ESPN mode is fully client-side — no Firebase writes
         if (Object.keys(newScores).length > 0) {
-            await db.ref('scores').set(newScores);
-            await db.ref('lastScoreUpdate').set(new Date().toISOString());
-            const now = new Date();
-            document.getElementById('lastUpdated').textContent =
-                `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${Object.keys(newScores).length} players)`;
+            scoresData = newScores;
+            lastScoreUpdateTime = new Date().toISOString();
+            updateLastUpdatedDisplay();
+            refreshCurrentPage();
         }
     }
 
@@ -1166,18 +1206,24 @@
     async function testEspnFetch() {
         const tid = document.getElementById('espnTournamentId').value.trim();
         const resultDiv = document.getElementById('espnTestResult');
-        if (!tid) { resultDiv.innerHTML = '<div class="validation-error">Enter an ESPN Tournament ID first.</div>'; return; }
 
         resultDiv.innerHTML = '<p>Fetching from ESPN API...</p>';
         try {
-            const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tid)}`;
+            const url = tid
+                ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tid)}`
+                : 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard';
             const response = await fetch(url);
             if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
             const data = await response.json();
 
-            const event = data.events && data.events.find(e => String(e.id) === String(tid));
+            let event;
+            if (tid) {
+                event = data.events && data.events.find(e => String(e.id) === String(tid));
+            } else {
+                event = data.events && data.events[0];
+            }
             if (!event) {
-                resultDiv.innerHTML = '<div class="validation-error">Tournament ID not found. Check the ID and try again.</div>';
+                resultDiv.innerHTML = '<div class="validation-error">No tournament found. ' + (tid ? 'Check the ID and try again.' : 'There may not be an active PGA event right now.') + '</div>';
                 return;
             }
 
@@ -1373,6 +1419,10 @@
                 document.getElementById('teamsPage').classList.remove('hidden');
                 renderAllTeams();
                 break;
+            case 'tournament':
+                document.getElementById('tournamentPage').classList.remove('hidden');
+                renderTournamentLeaderboard();
+                break;
             case 'admin':
                 if (currentUser?.isAdmin) {
                     document.getElementById('adminPage').classList.remove('hidden');
@@ -1406,6 +1456,25 @@
         return Object.keys(golfersData);
     }
 
+    // Firebase keys can't contain . # $ / [ ] — sanitize player names used as keys
+    function sanitizeKey(name) {
+        return name.replace(/[.#$/\[\]]/g, '_');
+    }
+
+    // Compare new scores with current scoresData — only write if something changed
+    function scoresChanged(newScores) {
+        const oldKeys = Object.keys(scoresData);
+        const newKeys = Object.keys(newScores);
+        if (oldKeys.length !== newKeys.length) return true;
+        for (const key of newKeys) {
+            const o = scoresData[key];
+            const n = newScores[key];
+            if (!o) return true;
+            if (o.score !== n.score || o.status !== n.status || o.thru !== n.thru) return true;
+        }
+        return false;
+    }
+
     // Find which bracket a golfer belongs to
     function getGolferBracket(golferName) {
         for (const [bracket, golfers] of Object.entries(golfersData || {})) {
@@ -1415,9 +1484,10 @@
     }
 
     function getGolferScore(golferName) {
+        const key = sanitizeKey(golferName);
         // Manual scores take priority
-        if (manualScoresData[golferName] !== undefined && manualScoresData[golferName] !== null && manualScoresData[golferName] !== '') {
-            const manual = manualScoresData[golferName];
+        if (manualScoresData[key] !== undefined && manualScoresData[key] !== null && manualScoresData[key] !== '') {
+            const manual = manualScoresData[key];
             return {
                 score: typeof manual === 'object' ? manual.score : parseInt(manual),
                 status: typeof manual === 'object' ? (manual.status || 'active') : 'active',
@@ -1427,8 +1497,8 @@
         }
 
         // Then auto-fetched scores
-        if (scoresData[golferName]) {
-            return { ...scoresData[golferName], source: 'auto' };
+        if (scoresData[key]) {
+            return { ...scoresData[key], source: 'auto' };
         }
 
         // Default: not found
@@ -1827,6 +1897,160 @@
     }
 
     // ============================================================
+    // TOURNAMENT LEADERBOARD (Live ESPN Scores)
+    // ============================================================
+    function updateLastUpdatedDisplay() {
+        const headerEl = document.getElementById('lastUpdated');
+        const tournamentEl = document.getElementById('tournamentLastUpdated');
+        const badgeEl = document.getElementById('tournamentUpdateBadge');
+
+        if (!lastScoreUpdateTime) {
+            if (headerEl) headerEl.textContent = '';
+            if (tournamentEl) tournamentEl.textContent = '';
+            if (badgeEl) badgeEl.textContent = '';
+            return;
+        }
+
+        const d = new Date(lastScoreUpdateTime);
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const playerCount = Object.keys(scoresData).length;
+        const ago = getTimeAgo(d);
+
+        if (headerEl) headerEl.textContent = `Scores updated: ${timeStr} (${playerCount} players)`;
+        if (tournamentEl) tournamentEl.innerHTML = `<strong>Last updated:</strong> ${dateStr} ${timeStr} (${ago}) &mdash; ${playerCount} players tracked`;
+        if (badgeEl) badgeEl.textContent = `Updated ${timeStr}`;
+    }
+
+    function getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const mins = Math.floor(seconds / 60);
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ${mins % 60}m ago`;
+        return `${Math.floor(hours / 24)}d ago`;
+    }
+
+    let espnFetchInProgress = false;
+
+    async function renderTournamentLeaderboard() {
+        const tbody = document.querySelector('#tournamentLeaderboard tbody');
+        if (!tbody) return;
+        updateLastUpdatedDisplay();
+
+        // If no scores yet and ESPN mode is configured, trigger a fetch (guard against re-entry)
+        const hasScores = Object.keys(scoresData).length > 0 || Object.keys(manualScoresData).length > 0;
+        if (!hasScores && scoringConfig.mode === 'espn' && !espnFetchInProgress) {
+            espnFetchInProgress = true;
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#666;">⏳ Fetching live scores from ESPN...</td></tr>';
+            try {
+                await fetchEspnScores();
+                // fetchEspnScores updates scoresData and calls refreshCurrentPage, which re-calls this function
+            } catch (e) {
+                console.error('Tournament leaderboard auto-fetch failed:', e);
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:#dc3545;">Failed to fetch ESPN scores: ${e.message}</td></tr>`;
+            } finally {
+                espnFetchInProgress = false;
+            }
+            return;
+        }
+
+        // Combine auto-fetched and manual scores, get all known golfers
+        const allGolfers = getAllGolfers();
+        // Keys in scoresData/manualScoresData are sanitized — resolve display names
+        const allScoredKeys = new Set([...Object.keys(scoresData), ...Object.keys(manualScoresData)]);
+
+        // Build player list with scores
+        const players = [];
+        allScoredKeys.forEach(key => {
+            // Recover display name from the stored data, or use key as fallback
+            const displayName = (scoresData[key] && scoresData[key].displayName) || key;
+            const data = getGolferScore(displayName);
+            players.push({ name: displayName, ...data });
+        });
+
+        // Also add golfers from brackets that have no score yet
+        allGolfers.forEach(name => {
+            const key = sanitizeKey(name);
+            if (!allScoredKeys.has(key)) {
+                players.push({ name, score: null, status: 'pending', thru: '--', source: 'none' });
+            }
+        });
+
+        if (players.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999; padding: 30px;">No tournament scores yet. Scores will appear once live scoring is active.</td></tr>';
+            return;
+        }
+
+        // Get current user's picks for highlighting
+        const userData = usersData[currentUser.username];
+        const myPicks = (userData?.picks && Array.isArray(userData.picks)) ? userData.picks : [];
+
+        // Sort: active players by score (ascending), then cut/wd/dq, then pending
+        const statusOrder = { active: 0, cut: 1, wd: 2, dq: 2, missing: 3, pending: 4, none: 4 };
+        players.sort((a, b) => {
+            const sa = statusOrder[a.status] ?? 3;
+            const sb = statusOrder[b.status] ?? 3;
+            if (sa !== sb) return sa - sb;
+            if (a.score === null && b.score === null) return 0;
+            if (a.score === null) return 1;
+            if (b.score === null) return -1;
+            return a.score - b.score;
+        });
+
+        let html = '';
+        let pos = 0, lastScore = null, tied = 0;
+
+        players.forEach((p, idx) => {
+            const isMyPick = myPicks.includes(p.name);
+            const bracket = getGolferBracket(p.name);
+
+            // Calculate position (handle ties)
+            if (p.score !== null && (p.status === 'active' || p.status === 'auto')) {
+                if (p.score !== lastScore) {
+                    pos = idx + 1;
+                    tied = 0;
+                } else {
+                    tied++;
+                }
+                lastScore = p.score;
+            }
+
+            const posDisplay = (p.status === 'active' || p.status === 'auto') && p.score !== null
+                ? (tied > 0 ? `T${pos}` : pos) : '';
+
+            let statusDisplay = '';
+            if (p.status === 'cut') statusDisplay = '<span style="color: #dc3545;">CUT</span>';
+            else if (p.status === 'wd') statusDisplay = '<span style="color: #dc3545;">WD</span>';
+            else if (p.status === 'dq') statusDisplay = '<span style="color: #dc3545;">DQ</span>';
+            else if (p.status === 'pending' || p.status === 'none') statusDisplay = '<span style="color: #999;">--</span>';
+            else statusDisplay = '<span style="color: #28a745;">Active</span>';
+
+            const scoreHtml = p.score !== null ? formatScoreHtml(p.score, p.status) : '<span style="color: #999;">--</span>';
+            const thru = (p.thru && p.thru !== '--') ? p.thru : (p.status === 'active' && p.score !== null ? 'F' : '--');
+
+            const rowStyle = isMyPick
+                ? 'background: linear-gradient(90deg, #d4edda 0%, #e8f5e9 100%); border-left: 4px solid #0a3d0a;'
+                : '';
+            const cutStyle = (p.status === 'cut' || p.status === 'wd' || p.status === 'dq') ? 'opacity: 0.6;' : '';
+
+            html += `<tr style="${rowStyle}${cutStyle}">
+                <td>${posDisplay}</td>
+                <td>
+                    <strong>${p.name}</strong>${isMyPick ? ' ⛳' : ''}
+                    ${bracket ? `<br><small style="color: #888;">${bracket}</small>` : ''}
+                </td>
+                <td>${scoreHtml}</td>
+                <td>${thru}</td>
+                <td>${statusDisplay}</td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    // ============================================================
     // TEAM MODAL
     // ============================================================
     function openTeamModal(username) {
@@ -1976,8 +2200,10 @@
 
     function toggleScoringMode() {
         const mode = document.getElementById('scoringMode').value;
-        document.getElementById('espnScoringConfig').style.display = mode === 'espn' ? 'block' : 'none';
-        document.getElementById('autoScoringConfig').style.display = mode === 'auto' ? 'block' : 'none';
+        const espnEl = document.getElementById('espnScoringConfig');
+        const autoEl = document.getElementById('autoScoringConfig');
+        if (mode === 'espn') { espnEl.classList.remove('hidden'); } else { espnEl.classList.add('hidden'); }
+        if (mode === 'auto') { autoEl.classList.remove('hidden'); } else { autoEl.classList.add('hidden'); }
     }
 
     function saveScoringConfig() {
@@ -2030,14 +2256,13 @@
     // ---- ESPN API force fetch ----
     async function forceEspnFetchNow() {
         const tid = document.getElementById('espnTournamentId').value.trim();
-        if (!tid) { alert('Enter an ESPN Tournament ID first.'); return; }
         const oldTid = scoringConfig.espnTournamentId;
         const oldPenalty = scoringConfig.espnCutPenalty;
         scoringConfig.espnTournamentId = tid;
         scoringConfig.espnCutPenalty = parseInt(document.getElementById('espnCutPenalty').value) || 5;
         try {
             await fetchEspnScores();
-            alert('ESPN scores fetched and saved to Firebase!');
+            alert('ESPN scores fetched! (client-side only — no Firebase writes)');
         } catch (e) {
             alert('Error: ' + e.message);
         }
@@ -2191,8 +2416,9 @@
         let html = '<table class="score-input-table"><thead><tr><th>Golfer</th><th>Score (vs par)</th><th>Status</th><th>Thru</th></tr></thead><tbody>';
 
         allGolfers.forEach(name => {
-            const current = manualScoresData[name];
-            const autoScore = scoresData[name];
+            const key = sanitizeKey(name);
+            const current = manualScoresData[key];
+            const autoScore = scoresData[key];
             const scoreVal = current !== undefined && current !== null && current !== '' ?
                 (typeof current === 'object' ? current.score : current) : '';
             const statusVal = (typeof current === 'object' ? current.status : '') || '';
@@ -2225,10 +2451,11 @@
             const thruInput = document.getElementById(`mthru_${CSS.escape(name)}`);
 
             if (scoreInput && scoreInput.value !== '') {
-                scores[name] = {
+                scores[sanitizeKey(name)] = {
                     score: parseInt(scoreInput.value),
                     status: statusInput?.value || 'active',
-                    thru: thruInput?.value || 'F'
+                    thru: thruInput?.value || 'F',
+                    displayName: name
                 };
             }
         });
