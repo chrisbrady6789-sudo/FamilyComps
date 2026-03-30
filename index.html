@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⛳ Masters 2026 - Golf Comp</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a3d0a 0%, #1a5c2a 50%, #0a3d0a 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* ============ HEADER ============ */
+        .header {
+            background: linear-gradient(90deg, #003300 0%, #0a3d0a 50%, #003300 100%);
+            color: #fdd835;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-bottom: 3px solid #fdd835;
+            position: relative;
+        }
+        .header h1 { font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 5px; }
+        .header .subtitle { font-size: 1.2em; color: #fff; opacity: 0.9; }
+
+        .user-info {
+            position: absolute; top: 20px; right: 20px;
+            color: #fdd835; display: flex; align-items: center; gap: 15px;
+        }
+
+        /* ============ NAV ============ */
+        .nav {
+            background: #003300; padding: 10px;
+            display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+        }
+        .nav button {
+            background: linear-gradient(180deg, #1a5c2a 0%, #0a3d0a 100%);
+            color: #fdd835; border: 2px solid #fdd835;
+            padding: 10px 20px; cursor: pointer; border-radius: 5px;
+            font-weight: bold; transition: all 0.3s; font-size: 0.95em;
+        }
+        .nav button:hover, .nav button.active {
+            background: #fdd835; color: #003300;
+        }
+
+        /* ============ LAYOUT ============ */
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+
+        .card {
+            background: white; border-radius: 10px; padding: 25px;
+            margin-bottom: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #0a3d0a; border-bottom: 3px solid #fdd835;
+            padding-bottom: 10px; margin-bottom: 20px;
+        }
+
+        /* ============ BUTTONS ============ */
+        .btn {
+            background: linear-gradient(180deg, #1a5c2a 0%, #0a3d0a 100%);
+            color: white; border: none; padding: 12px 25px; cursor: pointer;
+            border-radius: 5px; font-weight: bold; font-size: 1em; transition: all 0.3s;
+        }
+        .btn:hover { background: linear-gradient(180deg, #2a7c3a 0%, #1a5c2a 100%); transform: translateY(-2px); }
+        .btn-gold { background: linear-gradient(180deg, #fdd835 0%, #f9a825 100%); color: #003300; }
+        .btn-danger { background: linear-gradient(180deg, #dc3545 0%, #a71d2a 100%); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { padding: 6px 14px; font-size: 0.85em; }
+
+        /* ============ FORMS ============ */
+        .login-container { max-width: 400px; margin: 50px auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #0a3d0a; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px; border: 2px solid #ddd;
+            border-radius: 5px; font-size: 1em;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: #0a3d0a; outline: none; }
+
+        .validation-error { background: #ffe6e6; border: 2px solid #dc3545; color: #dc3545; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+        .validation-success { background: #e6ffe6; border: 2px solid #28a745; color: #28a745; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+
+        /* ============ LEADERBOARD TABLE ============ */
+        .leaderboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        .leaderboard {
+            width: 100%; min-width: 400px; border-collapse: collapse;
+        }
+        .leaderboard th, .leaderboard td {
+            padding: 14px 12px; text-align: left; border-bottom: 2px solid #ddd;
+        }
+        .leaderboard th {
+            background: linear-gradient(180deg, #0a3d0a 0%, #003300 100%);
+            color: #fdd835; font-size: 0.95em;
+        }
+        .leaderboard tr.leader-row td {
+            background: linear-gradient(90deg, #fdd835 0%, #fff8dc 50%, #fdd835 100%);
+            font-weight: bold; border: 2px solid #f9a825;
+        }
+        .leaderboard tr:nth-child(2) td { background: #f0f0f0; }
+        .leaderboard tr:nth-child(3) td { background: #faf3e0; }
+        .leaderboard tr:hover td { background: #e8f5e9; }
+        .leaderboard .trend-up { color: #28a745; font-weight: bold; }
+        .leaderboard .trend-down { color: #dc3545; font-weight: bold; }
+        .leaderboard .trend-same { color: #999; }
+        .leaderboard .clickable { cursor: pointer; }
+        .leaderboard .clickable:hover td { background: #d4edda; }
+
+        /* ============ TEAM DETAIL ============ */
+        .team-table {
+            width: 100%; border-collapse: collapse; margin-top: 15px;
+        }
+        .team-table th, .team-table td {
+            padding: 12px; text-align: left; border-bottom: 1px solid #ddd;
+        }
+        .team-table th { background: #0a3d0a; color: #fdd835; }
+        .team-table .counting { background-color: #e8f5e9; font-weight: bold; }
+        .team-table .not-counting { color: #999; }
+        .team-table .cut { color: #dc3545; font-style: italic; }
+
+        /* ============ GOLFER PICKER ============ */
+        .golfer-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-top: 15px; }
+        .golfer-option {
+            padding: 12px; border: 2px solid #ddd; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .golfer-option:hover { border-color: #0a3d0a; background: #f0fff0; }
+        .golfer-option.selected { border-color: #0a3d0a; background: #d4edda; font-weight: bold; }
+        .golfer-option.disabled { opacity: 0.4; cursor: not-allowed; }
+        .golfer-option .rank { color: #999; font-size: 0.85em; }
+
+        .pick-count {
+            text-align: center; padding: 15px;
+            font-size: 1.3em; font-weight: bold; color: #0a3d0a;
+            background: #f0fff0; border-radius: 8px; margin-bottom: 15px;
+            border: 2px solid #0a3d0a;
+        }
+        .pick-count.full { background: #d4edda; border-color: #28a745; color: #28a745; }
+        .pick-count.over { background: #ffe6e6; border-color: #dc3545; color: #dc3545; }
+
+        .search-box {
+            width: 100%; padding: 12px; border: 2px solid #ddd;
+            border-radius: 8px; font-size: 1em; margin-bottom: 15px;
+        }
+        .search-box:focus { border-color: #0a3d0a; outline: none; }
+
+        /* ============ TEAM SECTIONS ============ */
+        .team-section { margin-bottom: 30px; }
+        .team-section h3 { color: #0a3d0a; margin-bottom: 10px; }
+
+        /* ============ RULES BOX ============ */
+        .rules-box {
+            background: #fff8dc; border: 2px solid #fdd835;
+            border-radius: 10px; padding: 20px; margin-bottom: 20px;
+        }
+        .rules-box h3 { color: #0a3d0a; margin-bottom: 10px; }
+        .rules-box ul { margin-left: 20px; }
+        .rules-box li { margin-bottom: 8px; }
+
+        /* ============ PRIZE CARDS ============ */
+        .prize-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        .prize-card {
+            background: linear-gradient(135deg, #fdd835 0%, #f9a825 100%);
+            padding: 20px; border-radius: 10px; text-align: center; color: #003300;
+        }
+        .prize-card h3 { font-size: 1.5em; }
+
+        /* ============ ADMIN ============ */
+        .admin-section {
+            background: #fff3cd; border: 2px solid #ffc107;
+            border-radius: 10px; padding: 20px; margin-top: 20px;
+        }
+
+        /* ============ PICK CARDS ============ */
+        .pick-summary-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px; margin-top: 15px;
+        }
+        .pick-card {
+            background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px;
+            padding: 15px; border-left: 4px solid #0a3d0a; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .pick-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); border-left-color: #fdd835; }
+        .pick-card h4 { color: #0a3d0a; margin-bottom: 8px; }
+        .pick-card .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
+        .status-submitted { background: #28a745; color: white; }
+        .status-pending { background: #ffc107; color: #333; }
+        .status-not-entered { background: #dc3545; color: white; }
+
+        /* ============ SCORE DISPLAY ============ */
+        .score-under { color: #d32f2f; font-weight: bold; }
+        .score-over { color: #1976d2; }
+        .score-even { color: #333; font-weight: bold; }
+        .score-cut { color: #999; font-style: italic; }
+
+        /* ============ SYNC / LOADING ============ */
+        .sync-status {
+            position: fixed; bottom: 20px; right: 20px; padding: 10px 20px;
+            border-radius: 20px; font-size: 0.9em; z-index: 999;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .sync-status.connected { background: #28a745; color: white; }
+        .sync-status.disconnected { background: #dc3545; color: white; }
+        .sync-status.syncing { background: #ffc107; color: #333; }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; justify-content: center;
+            align-items: center; z-index: 2000; flex-direction: column; color: white;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #333; border-top-color: #fdd835;
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ============ MODAL ============ */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: flex; justify-content: center;
+            align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; border-radius: 10px; max-width: 700px;
+            max-height: 90vh; overflow-y: auto; width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            background: linear-gradient(90deg, #003300 0%, #0a3d0a 50%, #003300 100%);
+            color: #fdd835; padding: 20px; border-radius: 10px 10px 0 0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h2 { margin: 0; border: none; padding: 0; }
+        .modal-close {
+            background: none; border: none; color: #fdd835;
+            font-size: 2em; cursor: pointer; padding: 0; line-height: 1;
+        }
+        .modal-close:hover { color: white; }
+        .modal-body { padding: 20px; }
+
+        /* ============ TABS ============ */
+        .tab-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 20px; background: #f0f0f0; border: 2px solid #0a3d0a;
+            border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;
+        }
+        .tab-btn:hover, .tab-btn.active { background: #0a3d0a; color: #fdd835; }
+
+        .hidden { display: none !important; }
+
+        /* Last updated */
+        #lastUpdated { color: rgba(255,255,255,0.7); font-size: 0.9em; margin-top: 5px; }
+
+        /* Scoring source indicator */
+        .scoring-source {
+            display: inline-block; padding: 4px 12px; border-radius: 15px;
+            font-size: 0.8em; font-weight: bold; margin-left: 10px;
+        }
+        .scoring-source.live { background: #28a745; color: white; }
+        .scoring-source.manual { background: #ffc107; color: #333; }
+        .scoring-source.none { background: #dc3545; color: white; }
+
+        /* Score input table in admin */
+        .score-input-table { width: 100%; border-collapse: collapse; }
+        .score-input-table th, .score-input-table td { padding: 8px 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        .score-input-table th { background: #f0f0f0; }
+        .score-input-table input { width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+        .score-input-table select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+
+        /* ============ MOBILE RESPONSIVE ============ */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5em; }
+            .header .subtitle { font-size: 1em; }
+            .user-info { position: static; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+            .nav { padding: 8px; gap: 5px; }
+            .nav button { padding: 8px 12px; font-size: 0.85em; }
+            .container { padding: 10px; }
+            .card { padding: 15px; }
+            .golfer-picker { grid-template-columns: 1fr 1fr; }
+            .pick-summary-grid { grid-template-columns: 1fr; }
+            .btn { padding: 12px 20px; font-size: 1em; width: 100%; margin-bottom: 10px; }
+            .form-group input, .form-group select { padding: 12px; font-size: 16px; }
+            .leaderboard { font-size: 0.85em; }
+            .leaderboard th, .leaderboard td { padding: 10px 6px; }
+            .modal-content { width: 95%; max-height: 95vh; }
+            .prize-info { grid-template-columns: 1fr 1fr; }
+            .sync-status { bottom: 10px; right: 10px; padding: 8px 12px; font-size: 0.8em; }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 1.3em; }
+            .nav button { padding: 8px 10px; font-size: 0.75em; }
+            .golfer-picker { grid-template-columns: 1fr; }
+            .leaderboard { font-size: 0.75em; }
+            .leaderboard th, .leaderboard td { padding: 6px 4px; }
+            .prize-info { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loadingText">Connecting to server...</div>
+    </div>
+
+    <!-- Sync Status -->
+    <div id="syncStatus" class="sync-status disconnected">
+        <span id="syncIcon">🔴</span>
+        <span id="syncText">Offline</span>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>⛳ Masters 2026 Golf Comp ⛳</h1>
+        <div class="subtitle">Augusta National Golf Club</div>
+        <div id="lastUpdated"></div>
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav hidden" id="mainNav">
+        <button onclick="showPage('home')" id="nav-home">Home</button>
+        <button onclick="showPage('picks')" id="nav-picks">My Team</button>
+        <button onclick="showPage('leaderboard')" id="nav-leaderboard">Leaderboard</button>
+        <button onclick="showPage('teams')" id="nav-teams">All Teams</button>
+        <button onclick="showPage('admin')" id="nav-admin" class="hidden">Admin</button>
+    </div>
+
+    <!-- Team Detail Modal -->
+    <div id="teamModal" class="modal-overlay hidden" onclick="closeTeamModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="modalTeamName">Team</h2>
+                <button class="modal-close" onclick="closeTeamModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalTeamBody"></div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal-overlay hidden" onclick="if(event.target.id==='changePasswordModal')closeChangePasswordModal()">
+        <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="changePasswordMessage"></div>
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                </div>
+                <button class="btn btn-gold" onclick="changePassword()" style="width: 100%;">Update Password</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Login Page -->
+        <div id="loginPage" class="login-container hidden">
+            <div class="card">
+                <h2>🔐 Login / Register</h2>
+                <div id="loginMessage"></div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter your name" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn" onclick="login()">Login</button>
+                    <button class="btn btn-gold" onclick="register()">Register</button>
+                </div>
+                <div style="margin-top: 15px; text-align: center; color: #666; font-size: 0.9em;">
+                    Forgot your password? Ask the admin to reset it.
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Page -->
+        <div id="homePage" class="hidden">
+            <div class="card rules-box">
+                <h3>⛳ Competition Rules - The Masters 2026</h3>
+                <ul>
+                    <li>Each player picks <strong>10 golfers</strong> from the tournament field.</li>
+                    <li>Your team score is calculated from the <strong>best 5 out of 10</strong> golfers' scores relative to par.</li>
+                    <li>The <strong>lowest combined score wins</strong>.</li>
+                    <li>Golfers who <strong>miss the cut</strong> receive a penalty score (cut line + penalty strokes).</li>
+                    <li>Golfers who <strong>withdraw (WD)</strong> or are <strong>disqualified (DQ)</strong> receive a +20 penalty.</li>
+                    <li>If a golfer is not in the field / doesn't start, they receive a <strong>+10 default</strong> score.</li>
+                    <li>Picks must be submitted <strong>before the first tee time on Thursday</strong>.</li>
+                    <li>Golfers can be picked by <strong>multiple teams</strong> (no draft).</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🏆 Prize Pool</h2>
+                <p>Entry Fee: €20 per person</p>
+                <div class="prize-info">
+                    <div class="prize-card">
+                        <h3>🥇 1st</h3>
+                        <p>60% of pot</p>
+                    </div>
+                    <div class="prize-card">
+                        <h3>🥈 2nd</h3>
+                        <p>25% of pot</p>
+                    </div>
+                    <div class="prize-card">
+                        <h3>🥉 3rd</h3>
+                        <p>15% of pot</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🔑 Account</h2>
+                <button class="btn" onclick="showChangePasswordModal()" style="margin-top: 5px;">Change Password</button>
+            </div>
+
+            <div class="card">
+                <h2>📊 Entry Status</h2>
+                <div id="homeStatusOverview"></div>
+            </div>
+        </div>
+
+        <!-- Picks Page -->
+        <div id="picksPage" class="hidden">
+            <div class="card">
+                <h2>⛳ Pick Your Team</h2>
+                <div id="picksDeadlineMsg"></div>
+                <div id="pickCountDisplay" class="pick-count">0 / 10 golfers selected</div>
+                <input type="text" class="search-box" id="golferSearch" placeholder="🔍 Search golfers..." oninput="filterGolfers()">
+
+                <div id="currentPicksList" style="margin-bottom: 20px;"></div>
+
+                <div class="golfer-picker" id="golferPicker"></div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-gold" onclick="submitPicks()" id="submitPicksBtn">Submit Team</button>
+                    <button class="btn" onclick="saveDraft()" id="saveDraftBtn">Save Draft</button>
+                </div>
+                <div id="picksMessage" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Page -->
+        <div id="leaderboardPage" class="hidden">
+            <div class="card">
+                <h2>🏆 Leaderboard
+                    <span id="scoringSourceBadge" class="scoring-source none">No Scores</span>
+                </h2>
+                <p style="margin-bottom: 15px; color: #666;">Best 5 of 10 golfers. Click a team to see details.</p>
+                <div class="leaderboard-wrap">
+                    <table class="leaderboard" id="mainLeaderboard">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th></th>
+                                <th>Team</th>
+                                <th>Best 5 Total</th>
+                                <th>Best Golfer</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Teams Page -->
+        <div id="teamsPage" class="hidden">
+            <div class="card">
+                <h2>👥 All Teams</h2>
+                <p style="margin-bottom: 15px; color: #666;">Click any team to see their full selection and scores.</p>
+                <div id="allTeamsContainer" class="pick-summary-grid"></div>
+            </div>
+        </div>
+
+        <!-- Admin Page -->
+        <div id="adminPage" class="hidden">
+            <div class="card admin-section">
+                <h2>⚙️ Admin Panel</h2>
+
+                <div class="tab-bar" id="adminTabs">
+                    <div class="tab-btn active" onclick="showAdminTab('scoring')">Live Scoring</div>
+                    <div class="tab-btn" onclick="showAdminTab('golfers')">Manage Golfers</div>
+                    <div class="tab-btn" onclick="showAdminTab('scores')">Manual Scores</div>
+                    <div class="tab-btn" onclick="showAdminTab('settings')">Settings</div>
+                    <div class="tab-btn" onclick="showAdminTab('users')">Users</div>
+                    <div class="tab-btn" onclick="showAdminTab('data')">Data</div>
+                </div>
+
+                <!-- Live Scoring Tab -->
+                <div id="adminTab-scoring">
+                    <h3>📡 Live Scoring Configuration</h3>
+                    <p style="margin-bottom: 15px;">Configure automatic score fetching, or use manual scores.</p>
+
+                    <div class="form-group">
+                        <label>Scoring Mode</label>
+                        <select id="scoringMode" onchange="toggleScoringMode()">
+                            <option value="manual">Manual Only</option>
+                            <option value="espn">ESPN API (Direct) ⭐ Recommended</option>
+                            <option value="auto">Auto-Fetch (Google Sheets)</option>
+                        </select>
+                    </div>
+
+                    <!-- ESPN API Config -->
+                    <div id="espnScoringConfig" class="hidden">
+                        <div style="background: #e8f5e9; border: 2px solid #28a745; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <h4 style="margin-bottom: 8px;">⚡ ESPN API — Direct &amp; Fast</h4>
+                            <p style="font-size: 0.9em; line-height: 1.5;">Fetches scores directly from ESPN's JSON API. No Google Sheets needed. Near real-time data, updated every 60 seconds.</p>
+                            <p style="margin-top: 8px; font-size: 0.85em; color: #666;">This uses ESPN's public scoreboard API. It's been stable for years but is technically undocumented.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>ESPN Tournament ID</label>
+                            <input type="text" id="espnTournamentId" placeholder="e.g. 401811941">
+                            <small style="color: #666;">The ESPN event ID for the tournament. Masters 2026 = <strong>401811941</strong>. Find it in the ESPN leaderboard URL.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Refresh Interval (seconds)</label>
+                            <input type="number" id="espnRefreshInterval" value="60" min="30" max="600" style="width: 120px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Cut Penalty (extra strokes added to cut line)</label>
+                            <input type="number" id="espnCutPenalty" value="5" min="0" style="width: 120px;">
+                            <small style="color: #666;">The cut line is auto-detected from ESPN data. This is the extra penalty added on top.</small>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn" onclick="testEspnFetch()">Test ESPN Fetch</button>
+                            <button class="btn" onclick="forceEspnFetchNow()">Force Fetch Now</button>
+                        </div>
+                        <div id="espnTestResult" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Google Sheets Config -->
+                    <div id="autoScoringConfig" class="hidden">
+                        <div style="background: #fff8dc; border: 2px solid #fdd835; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <h4 style="margin-bottom: 8px;">📋 Google Sheets Fallback</h4>
+                            <ol style="margin-left: 20px; font-size: 0.9em; line-height: 1.6;">
+                                <li>A Google Sheet uses <code>IMPORTHTML</code> to scrape the ESPN leaderboard.</li>
+                                <li>A checkbox toggle mechanism forces refreshes.</li>
+                                <li>An Apps Script serves the data as JSON.</li>
+                            </ol>
+                            <p style="margin-top: 10px; font-size: 0.85em; color: #666;">Use this as a backup if the ESPN API stops working. See Setup Guide for details.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Google Sheets Apps Script URL</label>
+                            <input type="text" id="sheetsApiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                            <small style="color: #666;">The deployed Web App URL from your Google Apps Script.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Refresh Interval (seconds)</label>
+                            <input type="number" id="refreshInterval" value="60" min="30" max="600" style="width: 120px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Cut Line Score (relative to par)</label>
+                            <input type="number" id="cutLineScore" value="0" style="width: 120px;">
+                            <small style="color: #666;">e.g. +4 means the cut is at 4 over par.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Cut Penalty (extra strokes)</label>
+                            <input type="number" id="cutPenalty" value="5" min="0" style="width: 120px;">
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn" onclick="testScoringFetch()">Test Fetch</button>
+                            <button class="btn" onclick="forceFetchNow()">Force Fetch Now</button>
+                        </div>
+                        <div id="testFetchResult" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <button class="btn btn-gold" onclick="saveScoringConfig()" style="margin-top: 20px;">Save Scoring Config</button>
+                </div>
+
+                <!-- Manage Golfers Tab -->
+                <div id="adminTab-golfers" class="hidden">
+                    <h3>🏌️ Tournament Field</h3>
+                    <p style="margin-bottom: 15px;">Enter the golfers available for selection. One name per line.</p>
+                    <textarea id="golferListInput" rows="20" style="width: 100%; padding: 10px; font-family: monospace; font-size: 0.9em; border: 2px solid #ddd; border-radius: 5px;"></textarea>
+                    <button class="btn btn-gold" onclick="saveGolferList()" style="margin-top: 15px;">Save Golfer List</button>
+                </div>
+
+                <!-- Manual Scores Tab -->
+                <div id="adminTab-scores" class="hidden">
+                    <h3>✏️ Manual Score Entry</h3>
+                    <p style="margin-bottom: 15px;">Manually enter or override golfer scores (relative to par). These override any auto-fetched scores.</p>
+                    <div id="manualScoresContainer"></div>
+                    <button class="btn btn-gold" onclick="saveManualScores()" style="margin-top: 15px;">Save Manual Scores</button>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="adminTab-settings" class="hidden">
+                    <h3>🔧 Competition Settings</h3>
+                    <div class="form-group">
+                        <label>Competition Name</label>
+                        <input type="text" id="compName" value="Masters 2026" placeholder="e.g. Masters 2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Picks per team</label>
+                        <input type="number" id="picksPerTeam" value="10" min="5" max="20" style="width: 100px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Best scores to count</label>
+                        <input type="number" id="bestToCount" value="5" min="1" max="15" style="width: 100px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Default score for missing/unranked golfers</label>
+                        <input type="number" id="defaultScore" value="10" min="0" style="width: 100px;">
+                    </div>
+                    <div class="form-group">
+                        <label>WD/DQ Penalty Score</label>
+                        <input type="number" id="wdPenalty" value="20" min="0" style="width: 100px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Picks Deadline</label>
+                        <input type="datetime-local" id="picksDeadline">
+                        <small style="color: #666;">After this time, users cannot modify their picks.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="picksLocked"> Lock all picks immediately (override deadline)
+                        </label>
+                    </div>
+                    <button class="btn btn-gold" onclick="saveCompSettings()">Save Settings</button>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="adminTab-users" class="hidden">
+                    <h3>👥 Manage Users</h3>
+                    <div id="userManagement"></div>
+                </div>
+
+                <!-- Data Tab -->
+                <div id="adminTab-data" class="hidden">
+                    <h3>📤 Export / Import Data</h3>
+                    <p style="margin-bottom: 15px;">Backup or restore all data.</p>
+                    <button class="btn" onclick="exportData()">Export All Data (JSON)</button>
+                    <button class="btn" onclick="document.getElementById('importFile').click()" style="margin-left: 10px;">Import Data</button>
+                    <input type="file" id="importFile" style="display: none;" onchange="importData(event)" accept=".json">
+
+                    <div style="margin-top: 30px; border: 2px solid #dc3545; border-radius: 10px; padding: 20px;">
+                        <h4 style="color: #dc3545;">⚠️ Danger Zone</h4>
+                        <button class="btn btn-danger" onclick="resetAllData()" style="margin-top: 10px;">Reset All Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // FIREBASE CONFIG - UPDATE THESE VALUES FOR YOUR PROJECT
+    // ============================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrrY5L9U4zemnVOHOnjvGv0WxpNvBWJ6Q",
+        authDomain: "brady-golf-comp.firebaseapp.com",
+        databaseURL: "https://brady-golf-comp-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "brady-golf-comp",
+    };
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    let db = null;
+    let currentUser = null;
+    let currentPage = 'login';
+    let currentAdminTab = 'scoring';
+
+    // Cached Firebase data
+    let usersData = {};
+    let golfersData = [];      // Array of golfer names in the field
+    let scoresData = {};       // { golferName: { score: number, status: 'active'|'cut'|'wd'|'dq', thru: string } }
+    let settingsData = {};     // Competition settings
+    let scoringConfig = {};    // Scoring configuration (mode, url, etc.)
+    let manualScoresData = {}; // Manual score overrides
+    let dataLoaded = false;
+
+    // Auto-refresh timer
+    let scoreRefreshTimer = null;
+
+    // Default competition settings
+    const DEFAULT_SETTINGS = {
+        compName: 'Masters 2026',
+        picksPerTeam: 10,
+        bestToCount: 5,
+        defaultScore: 10,
+        wdPenalty: 20,
+        picksDeadline: '',
+        picksLocked: false,
+        cutLineScore: 0,
+        cutPenalty: 5
+    };
+
+    // ============================================================
+    // FIREBASE INITIALIZATION
+    // ============================================================
+    function initFirebase() {
+        if (!firebaseConfig.databaseURL || !firebaseConfig.apiKey) {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+            showFirebaseSetupPrompt();
+            return false;
+        }
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+
+            db.ref('.info/connected').on('value', (snap) => {
+                updateSyncStatus(snap.val() ? 'connected' : 'disconnected');
+            });
+
+            setupRealtimeListeners();
+            return true;
+        } catch (error) {
+            console.error('Firebase init error:', error);
+            document.getElementById('loadingText').textContent = 'Error: ' + error.message;
+            return false;
+        }
+    }
+
+    function showFirebaseSetupPrompt() {
+        const container = document.querySelector('.container');
+        container.innerHTML = `
+            <div class="card" style="max-width: 700px; margin: 20px auto;">
+                <h2>🔧 Firebase Setup Required</h2>
+                <p style="margin-bottom: 15px;">To get started, you need to set up a Firebase project. This is free and takes about 5 minutes.</p>
+                
+                <h3 style="color: #0a3d0a; margin-top: 20px;">Step 1: Create Firebase Project</h3>
+                <ol style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>Go to <strong>console.firebase.google.com</strong></li>
+                    <li>Click "Add project" and follow the wizard</li>
+                    <li>Enable <strong>Realtime Database</strong> (Build → Realtime Database → Create Database)</li>
+                    <li>Choose your region and start in <strong>test mode</strong></li>
+                </ol>
+
+                <h3 style="color: #0a3d0a;">Step 2: Get Web App Config</h3>
+                <ol style="margin-left: 20px; margin-bottom: 15px;">
+                    <li>In Firebase Console, go to <strong>Project Settings</strong> (gear icon)</li>
+                    <li>Under "Your apps", click the <strong>Web</strong> icon (&lt;/&gt;)</li>
+                    <li>Register your app and copy the config values</li>
+                </ol>
+
+                <h3 style="color: #0a3d0a;">Step 3: Enter Config Below</h3>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="text" id="setupApiKey" placeholder="AIzaSy...">
+                </div>
+                <div class="form-group">
+                    <label>Auth Domain</label>
+                    <input type="text" id="setupAuthDomain" placeholder="your-project.firebaseapp.com">
+                </div>
+                <div class="form-group">
+                    <label>Database URL</label>
+                    <input type="text" id="setupDbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+                </div>
+                <div class="form-group">
+                    <label>Project ID</label>
+                    <input type="text" id="setupProjectId" placeholder="your-project-id">
+                </div>
+                <button class="btn btn-gold" onclick="applyFirebaseConfig()">Connect & Save</button>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                    The config will be saved to the HTML file. You'll need to update the <code>firebaseConfig</code> object in the source code for permanent use.
+                </p>
+            </div>
+        `;
+    }
+
+    function applyFirebaseConfig() {
+        const apiKey = document.getElementById('setupApiKey').value.trim();
+        const authDomain = document.getElementById('setupAuthDomain').value.trim();
+        const databaseURL = document.getElementById('setupDbUrl').value.trim();
+        const projectId = document.getElementById('setupProjectId').value.trim();
+
+        if (!apiKey || !databaseURL) {
+            alert('Please fill in at least the API Key and Database URL.');
+            return;
+        }
+
+        firebaseConfig.apiKey = apiKey;
+        firebaseConfig.authDomain = authDomain;
+        firebaseConfig.databaseURL = databaseURL;
+        firebaseConfig.projectId = projectId;
+
+        // Reinitialize
+        location.reload();
+    }
+
+    function setupRealtimeListeners() {
+        db.ref('users').on('value', (snapshot) => {
+            usersData = snapshot.val() || {};
+            if (!usersData.admin) {
+                db.ref('users/admin').set({ password: 'admin123', isAdmin: true, picks: [] });
+            }
+            checkDataLoaded();
+            refreshCurrentPage();
+        });
+
+        db.ref('golfers').on('value', (snapshot) => {
+            golfersData = snapshot.val() || [];
+            checkDataLoaded();
+            refreshCurrentPage();
+        });
+
+        db.ref('scores').on('value', (snapshot) => {
+            scoresData = snapshot.val() || {};
+            checkDataLoaded();
+            refreshCurrentPage();
+        });
+
+        db.ref('settings').on('value', (snapshot) => {
+            settingsData = { ...DEFAULT_SETTINGS, ...(snapshot.val() || {}) };
+            checkDataLoaded();
+            refreshCurrentPage();
+            updateHeaderTitle();
+        });
+
+        db.ref('scoringConfig').on('value', (snapshot) => {
+            scoringConfig = snapshot.val() || { mode: 'manual' };
+            setupAutoRefresh();
+        });
+
+        db.ref('manualScores').on('value', (snapshot) => {
+            manualScoresData = snapshot.val() || {};
+            refreshCurrentPage();
+        });
+    }
+
+    function checkDataLoaded() {
+        if (!dataLoaded && usersData) {
+            dataLoaded = true;
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            checkLoggedIn();
+        }
+    }
+
+    function refreshCurrentPage() {
+        if (!currentUser || !dataLoaded) return;
+        switch (currentPage) {
+            case 'home': renderHome(); break;
+            case 'picks': renderPicks(); break;
+            case 'leaderboard': renderLeaderboard(); break;
+            case 'teams': renderAllTeams(); break;
+            case 'admin': if (currentUser.isAdmin) renderAdmin(); break;
+        }
+    }
+
+    function updateSyncStatus(status) {
+        const el = document.getElementById('syncStatus');
+        const icon = document.getElementById('syncIcon');
+        const text = document.getElementById('syncText');
+        el.className = 'sync-status ' + status;
+        if (status === 'connected') { icon.textContent = '🟢'; text.textContent = 'Live'; }
+        else if (status === 'disconnected') { icon.textContent = '🔴'; text.textContent = 'Offline'; }
+        else if (status === 'syncing') { icon.textContent = '🟡'; text.textContent = 'Syncing...'; }
+    }
+
+    function updateHeaderTitle() {
+        const compName = settingsData.compName || 'Masters 2026';
+        document.querySelector('.header h1').textContent = `⛳ ${compName} Golf Comp ⛳`;
+        document.title = `⛳ ${compName} - Golf Comp`;
+    }
+
+    // ============================================================
+    // AUTO SCORE REFRESH
+    // ============================================================
+    function setupAutoRefresh() {
+        if (scoreRefreshTimer) clearInterval(scoreRefreshTimer);
+
+        if (scoringConfig.mode === 'espn' && scoringConfig.espnTournamentId) {
+            const interval = (scoringConfig.espnRefreshInterval || 60) * 1000;
+            fetchEspnScores();
+            scoreRefreshTimer = setInterval(fetchEspnScores, interval);
+        } else if (scoringConfig.mode === 'auto' && scoringConfig.url) {
+            const interval = (scoringConfig.refreshInterval || 60) * 1000;
+            fetchLiveScores();
+            scoreRefreshTimer = setInterval(fetchLiveScores, interval);
+        }
+    }
+
+    // Find a header index by trying multiple possible names
+    function findHeaderIndex(headerMap, ...names) {
+        for (const name of names) {
+            if (headerMap[name] !== undefined) return headerMap[name];
+        }
+        return undefined;
+    }
+
+    // Normalize a golfer name for matching (lowercase, strip accents, extra spaces)
+    function normalizeName(name) {
+        return name.toString().trim()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+    }
+
+    // Match an ESPN name to the closest golfer in our field
+    function matchGolferName(espnName) {
+        if (!espnName) return null;
+        const normalized = normalizeName(espnName);
+        const golfers = golfersData || [];
+
+        // Exact match first (case-insensitive)
+        const exact = golfers.find(g => normalizeName(g) === normalized);
+        if (exact) return exact;
+
+        // Try "Last, First" → "First Last" conversion (ESPN sometimes uses this)
+        if (normalized.includes(',')) {
+            const parts = normalized.split(',').map(s => s.trim());
+            const flipped = parts[1] + ' ' + parts[0];
+            const match = golfers.find(g => normalizeName(g) === flipped);
+            if (match) return match;
+        }
+
+        // Partial/contains match - ESPN name contains our name or vice versa
+        const partial = golfers.find(g => {
+            const ng = normalizeName(g);
+            return ng.includes(normalized) || normalized.includes(ng);
+        });
+        if (partial) return partial;
+
+        // Last name match as fallback
+        const espnParts = normalized.split(' ');
+        const espnLast = espnParts[espnParts.length - 1];
+        const lastNameMatches = golfers.filter(g => {
+            const gParts = normalizeName(g).split(' ');
+            return gParts[gParts.length - 1] === espnLast;
+        });
+        if (lastNameMatches.length === 1) return lastNameMatches[0];
+
+        // No match - use ESPN name as-is
+        return espnName.toString().trim();
+    }
+
+    async function fetchLiveScores() {
+        if (!scoringConfig.url) return;
+
+        try {
+            const response = await fetch(scoringConfig.url);
+            const data = await response.json();
+
+            if (!Array.isArray(data) || data.length < 2) {
+                console.warn('Live scores: empty or invalid data');
+                return;
+            }
+
+            const newScores = {};
+            const headers = data[0];
+            const headerMap = {};
+            headers.forEach((h, i) => {
+                if (h && typeof h === 'string') headerMap[h.trim().toUpperCase()] = i;
+            });
+
+            // Flexible header matching for ESPN IMPORTHTML data
+            const idxPlayer = findHeaderIndex(headerMap, 'PLAYER', 'NAME', 'GOLFER', 'PLAYERS');
+            const idxScore = findHeaderIndex(headerMap, 'SCORE', 'TO PAR', 'TOPAR', 'VS PAR');
+            const idxThru = findHeaderIndex(headerMap, 'THRU', 'HOLES', 'HOLE');
+            const idxToday = findHeaderIndex(headerMap, 'TODAY', 'RD', 'ROUND', 'R4', 'R3', 'R2', 'R1');
+
+            if (idxPlayer === undefined) {
+                console.error('Live scores: could not find PLAYER column. Headers:', headers);
+                return;
+            }
+            if (idxScore === undefined) {
+                console.warn('Live scores: could not find SCORE column, will try to infer.');
+            }
+
+            const cutLine = settingsData.cutLineScore || 0;
+            const cutPenalty = settingsData.cutPenalty || 5;
+            const wdPenalty = settingsData.wdPenalty || 20;
+
+            data.slice(1).forEach(row => {
+                if (!row || row.length === 0) return;
+
+                const rawName = row[idxPlayer];
+                if (!rawName || rawName.toString().trim() === '') return;
+
+                // Skip header-like repeated rows
+                const nameStr = rawName.toString().trim();
+                if (nameStr.toUpperCase() === 'PLAYER' || nameStr.toUpperCase() === 'NAME') return;
+
+                // Match to our golfer list
+                const matchedName = matchGolferName(nameStr);
+
+                const scoreRaw = idxScore !== undefined ? row[idxScore] : null;
+                const thruRaw = idxThru !== undefined ? row[idxThru] : '';
+                const todayRaw = idxToday !== undefined ? row[idxToday] : '';
+                const scoreVal = scoreRaw !== null && scoreRaw !== undefined ? scoreRaw.toString().trim() : '';
+                const thru = thruRaw ? thruRaw.toString().trim() : '';
+
+                let score, status = 'active';
+
+                // Parse score value - handle various ESPN formats
+                const scoreUpper = scoreVal.toUpperCase();
+                if (scoreUpper === 'E' || scoreUpper === 'EVEN') {
+                    score = 0;
+                } else if (scoreUpper === 'CUT' || scoreUpper.includes('CUT')) {
+                    status = 'cut';
+                    score = cutLine + cutPenalty;
+                } else if (scoreUpper === 'WD' || scoreUpper.includes('WD')) {
+                    score = wdPenalty; status = 'wd';
+                } else if (scoreUpper === 'DQ' || scoreUpper.includes('DQ')) {
+                    score = wdPenalty; status = 'dq';
+                } else if (scoreUpper === 'MC' || scoreUpper.includes('MC')) {
+                    // MC = Missed Cut (alternative to CUT)
+                    status = 'cut';
+                    score = cutLine + cutPenalty;
+                } else if (scoreVal.startsWith('+')) {
+                    score = parseInt(scoreVal.slice(1));
+                } else if (scoreVal.startsWith('-') || scoreVal.startsWith('−')) {
+                    // Handle both regular hyphen and minus sign
+                    score = parseInt(scoreVal.replace('−', '-'));
+                } else if (scoreVal !== '' && !isNaN(scoreVal)) {
+                    score = parseInt(scoreVal);
+                }
+
+                if (score !== undefined && !isNaN(score)) {
+                    newScores[matchedName] = {
+                        score,
+                        status,
+                        thru: thru || 'F',
+                        today: todayRaw ? todayRaw.toString().trim() : ''
+                    };
+                }
+            });
+
+            // Save to Firebase
+            if (Object.keys(newScores).length > 0) {
+                await db.ref('scores').set(newScores);
+                await db.ref('lastScoreUpdate').set(new Date().toISOString());
+                const now = new Date();
+                document.getElementById('lastUpdated').textContent =
+                    `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${Object.keys(newScores).length} players)`;
+            }
+        } catch (e) {
+            console.error('Failed to fetch live scores:', e);
+        }
+    }
+
+    // ---- ESPN API Direct Fetch ----
+    async function fetchEspnScores() {
+        const tournamentId = scoringConfig.espnTournamentId;
+        if (!tournamentId) {
+            console.warn('ESPN: No tournament ID configured');
+            return;
+        }
+
+        const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tournamentId)}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
+        const data = await response.json();
+
+        // Find the event (usually the only one when queried by ID)
+        const event = data.events && data.events.find(e => String(e.id) === String(tournamentId));
+        if (!event) throw new Error('Tournament not found in ESPN response');
+
+        const competition = event.competitions && event.competitions[0];
+        if (!competition || !competition.competitors) throw new Error('No competitor data in ESPN response');
+
+        const competitors = competition.competitors;
+        const cutPenalty = scoringConfig.espnCutPenalty || 5;
+
+        // Detect cut line from ESPN data: lowest score among cut players
+        let cutLine = 0;
+        const cutPlayers = competitors.filter(c =>
+            c.status && c.status.type && c.status.type.description &&
+            c.status.type.description.toLowerCase() === 'cut'
+        );
+        if (cutPlayers.length > 0) {
+            const cutScores = cutPlayers.map(c => parseEspnScore(c.score)).filter(s => s !== null);
+            if (cutScores.length > 0) cutLine = Math.max(...cutScores);
+        }
+
+        const newScores = {};
+        competitors.forEach(comp => {
+            const displayName = comp.athlete && comp.athlete.displayName;
+            if (!displayName) return;
+
+            const matchedName = matchGolferName(displayName);
+            const statusDesc = (comp.status && comp.status.type && comp.status.type.description) || '';
+            const statusLower = statusDesc.toLowerCase();
+            const thru = (comp.status && comp.status.thru != null) ? String(comp.status.thru) : 'F';
+
+            let score = parseEspnScore(comp.score);
+            let status = 'active';
+
+            if (statusLower === 'cut') {
+                status = 'cut';
+                score = (score !== null ? score : cutLine) + cutPenalty;
+            } else if (statusLower === 'wd' || statusLower === 'withdrawn') {
+                status = 'wd';
+                score = score !== null ? score + cutPenalty : cutPenalty;
+            } else if (statusLower === 'dq' || statusLower === 'disqualified') {
+                status = 'dq';
+                score = score !== null ? score + cutPenalty : cutPenalty;
+            }
+
+            if (score !== null && !isNaN(score)) {
+                newScores[matchedName] = { score, status, thru: thru || 'F', today: '' };
+            }
+        });
+
+        if (Object.keys(newScores).length > 0) {
+            await db.ref('scores').set(newScores);
+            await db.ref('lastScoreUpdate').set(new Date().toISOString());
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent =
+                `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${Object.keys(newScores).length} players)`;
+        }
+    }
+
+    function parseEspnScore(scoreStr) {
+        if (scoreStr == null) return null;
+        const s = String(scoreStr).trim().toUpperCase();
+        if (s === 'E' || s === 'EVEN') return 0;
+        if (s === '' || s === '-' || s === '--') return null;
+        const n = parseInt(s.replace('−', '-'), 10);
+        return isNaN(n) ? null : n;
+    }
+
+    async function testEspnFetch() {
+        const tid = document.getElementById('espnTournamentId').value.trim();
+        const resultDiv = document.getElementById('espnTestResult');
+        if (!tid) { resultDiv.innerHTML = '<div class="validation-error">Enter an ESPN Tournament ID first.</div>'; return; }
+
+        resultDiv.innerHTML = '<p>Fetching from ESPN API...</p>';
+        try {
+            const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tid)}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
+            const data = await response.json();
+
+            const event = data.events && data.events.find(e => String(e.id) === String(tid));
+            if (!event) {
+                resultDiv.innerHTML = '<div class="validation-error">Tournament ID not found. Check the ID and try again.</div>';
+                return;
+            }
+
+            const competition = event.competitions && event.competitions[0];
+            const competitors = (competition && competition.competitors) || [];
+            const golfers = Object.keys(golfersData || {});
+
+            let html = `<div class="validation-success">✅ <strong>${event.name || 'Tournament'}</strong></div>`;
+            html += `<p style="margin:5px 0;font-size:0.9em;">Found <strong>${competitors.length}</strong> competitors</p>`;
+
+            if (competitors.length > 0) {
+                // Name matching preview
+                let matched = 0, unmatched = 0;
+                const unmatchedNames = [];
+                competitors.forEach(c => {
+                    const dn = c.athlete && c.athlete.displayName;
+                    if (!dn) return;
+                    const mn = matchGolferName(dn);
+                    if (golfers.includes(mn)) { matched++; } else { unmatched++; unmatchedNames.push(dn); }
+                });
+
+                html += `<p style="font-size:0.9em;">Name matching: <strong>${matched}</strong> matched, <strong>${unmatched}</strong> unmatched</p>`;
+                if (unmatchedNames.length > 0 && unmatchedNames.length <= 15) {
+                    html += `<details><summary style="cursor:pointer;font-size:0.85em;">Show unmatched names</summary><ul style="font-size:0.85em;">`;
+                    unmatchedNames.forEach(n => { html += `<li>${n}</li>`; });
+                    html += '</ul></details>';
+                }
+
+                // Sample data table
+                const sample = competitors.slice(0, 10);
+                html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:0.85em;">';
+                html += '<tr style="background:#eee;"><th style="padding:4px;text-align:left;">Player</th><th>Score</th><th>Thru</th><th>Status</th></tr>';
+                sample.forEach(c => {
+                    const name = (c.athlete && c.athlete.displayName) || '?';
+                    const score = c.score != null ? c.score : '-';
+                    const thru = (c.status && c.status.thru != null) ? c.status.thru : 'F';
+                    const st = (c.status && c.status.type && c.status.type.description) || 'active';
+                    html += `<tr><td style="padding:3px;">${name}</td><td style="text-align:center;">${score}</td><td style="text-align:center;">${thru}</td><td style="text-align:center;">${st}</td></tr>`;
+                });
+                html += '</table>';
+                if (competitors.length > 10) html += `<p style="font-size:0.8em;color:#888;">...and ${competitors.length - 10} more</p>`;
+            }
+
+            resultDiv.innerHTML = html;
+        } catch (e) {
+            resultDiv.innerHTML = `<div class="validation-error">Error: ${e.message}</div>`;
+        }
+    }
+
+    // ============================================================
+    // AUTH
+    // ============================================================
+    function checkLoggedIn() {
+        const saved = sessionStorage.getItem('masterscomp_currentUser');
+        if (saved && usersData[saved]) {
+            currentUser = { username: saved, ...usersData[saved] };
+            onLoginSuccess();
+        } else {
+            document.getElementById('loginPage').classList.remove('hidden');
+        }
+    }
+
+    function login() {
+        const username = document.getElementById('username').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) { showLoginMessage('Please enter username and password', 'error'); return; }
+        if (!usersData[username]) { showLoginMessage('User not found. Please register first.', 'error'); return; }
+        if (usersData[username].password !== password) { showLoginMessage('Incorrect password', 'error'); return; }
+
+        currentUser = { username, ...usersData[username] };
+        sessionStorage.setItem('masterscomp_currentUser', username);
+        onLoginSuccess();
+    }
+
+    function register() {
+        const username = document.getElementById('username').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) { showLoginMessage('Please enter username and password', 'error'); return; }
+        if (username.length < 2) { showLoginMessage('Username must be at least 2 characters', 'error'); return; }
+        if (username === 'admin') { showLoginMessage('Cannot register as admin', 'error'); return; }
+        if (usersData[username]) { showLoginMessage('Username already exists. Please login.', 'error'); return; }
+
+        updateSyncStatus('syncing');
+        db.ref('users/' + username).set({
+            password,
+            isAdmin: false,
+            picks: []
+        }).then(() => {
+            showLoginMessage('Registration successful!', 'success');
+            setTimeout(() => {
+                currentUser = { username, password, isAdmin: false, picks: [] };
+                sessionStorage.setItem('masterscomp_currentUser', username);
+                onLoginSuccess();
+            }, 500);
+        }).catch(err => {
+            showLoginMessage('Error: ' + err.message, 'error');
+        });
+    }
+
+    function logout() {
+        sessionStorage.removeItem('masterscomp_currentUser');
+        currentUser = null;
+        document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+        document.getElementById('mainNav').classList.add('hidden');
+        document.getElementById('userInfo').innerHTML = '';
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        const msg = document.getElementById('loginMessage');
+        if (msg) msg.style.display = 'none';
+    }
+
+    function onLoginSuccess() {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('mainNav').classList.remove('hidden');
+
+        if (currentUser.isAdmin) {
+            document.getElementById('nav-admin').classList.remove('hidden');
+        } else {
+            document.getElementById('nav-admin').classList.add('hidden');
+        }
+
+        document.getElementById('userInfo').innerHTML = `
+            <span>Welcome, <strong>${currentUser.username}</strong>${currentUser.isAdmin ? ' (Admin)' : ''}</span>
+            <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+        `;
+
+        showPage('home');
+    }
+
+    function showLoginMessage(message, type) {
+        const msgDiv = document.getElementById('loginMessage');
+        msgDiv.className = type === 'error' ? 'validation-error' : 'validation-success';
+        msgDiv.textContent = message;
+        msgDiv.style.display = 'block';
+    }
+
+    // Change password
+    function showChangePasswordModal() { document.getElementById('changePasswordModal').classList.remove('hidden'); }
+    function closeChangePasswordModal() {
+        document.getElementById('changePasswordModal').classList.add('hidden');
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        const msg = document.getElementById('changePasswordMessage');
+        if (msg) msg.innerHTML = '';
+    }
+
+    function changePassword() {
+        const current = document.getElementById('currentPassword').value;
+        const newPw = document.getElementById('newPassword').value;
+        const confirm = document.getElementById('confirmPassword').value;
+        const msgDiv = document.getElementById('changePasswordMessage');
+
+        if (!current || !newPw || !confirm) { msgDiv.innerHTML = '<div class="validation-error">Fill in all fields</div>'; return; }
+        if (usersData[currentUser.username].password !== current) { msgDiv.innerHTML = '<div class="validation-error">Current password incorrect</div>'; return; }
+        if (newPw.length < 3) { msgDiv.innerHTML = '<div class="validation-error">New password must be at least 3 characters</div>'; return; }
+        if (newPw !== confirm) { msgDiv.innerHTML = '<div class="validation-error">Passwords do not match</div>'; return; }
+
+        db.ref(`users/${currentUser.username}/password`).set(newPw).then(() => {
+            msgDiv.innerHTML = '<div class="validation-success">Password updated!</div>';
+            setTimeout(closeChangePasswordModal, 1500);
+        });
+    }
+
+    // ============================================================
+    // PAGE NAVIGATION
+    // ============================================================
+    function showPage(page) {
+        currentPage = page;
+        document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+        document.querySelectorAll('.nav button').forEach(btn => btn.classList.remove('active'));
+
+        const navBtn = document.getElementById(`nav-${page}`);
+        if (navBtn) navBtn.classList.add('active');
+
+        switch (page) {
+            case 'home':
+                document.getElementById('homePage').classList.remove('hidden');
+                renderHome();
+                break;
+            case 'picks':
+                document.getElementById('picksPage').classList.remove('hidden');
+                renderPicks();
+                break;
+            case 'leaderboard':
+                document.getElementById('leaderboardPage').classList.remove('hidden');
+                renderLeaderboard();
+                break;
+            case 'teams':
+                document.getElementById('teamsPage').classList.remove('hidden');
+                renderAllTeams();
+                break;
+            case 'admin':
+                if (currentUser?.isAdmin) {
+                    document.getElementById('adminPage').classList.remove('hidden');
+                    renderAdmin();
+                }
+                break;
+        }
+    }
+
+    // ============================================================
+    // SCORING HELPERS
+    // ============================================================
+    function getSettings() {
+        return { ...DEFAULT_SETTINGS, ...settingsData };
+    }
+
+    function getGolferScore(golferName) {
+        // Manual scores take priority
+        if (manualScoresData[golferName] !== undefined && manualScoresData[golferName] !== null && manualScoresData[golferName] !== '') {
+            const manual = manualScoresData[golferName];
+            return {
+                score: typeof manual === 'object' ? manual.score : parseInt(manual),
+                status: typeof manual === 'object' ? (manual.status || 'active') : 'active',
+                thru: typeof manual === 'object' ? (manual.thru || 'F') : 'F',
+                source: 'manual'
+            };
+        }
+
+        // Then auto-fetched scores
+        if (scoresData[golferName]) {
+            return { ...scoresData[golferName], source: 'auto' };
+        }
+
+        // Default: not found
+        return { score: getSettings().defaultScore, status: 'missing', thru: '--', source: 'default' };
+    }
+
+    function formatScore(score) {
+        if (score === 0) return 'E';
+        if (score > 0) return '+' + score;
+        return '' + score;
+    }
+
+    function formatScoreHtml(score, status) {
+        const formatted = formatScore(score);
+        if (status === 'cut') return `<span class="score-cut">${formatted} (CUT)</span>`;
+        if (status === 'wd') return `<span class="score-cut">${formatted} (WD)</span>`;
+        if (status === 'dq') return `<span class="score-cut">${formatted} (DQ)</span>`;
+        if (status === 'missing') return `<span style="color: #999;">${formatted} *</span>`;
+        if (score < 0) return `<span class="score-under">${formatted}</span>`;
+        if (score > 0) return `<span class="score-over">${formatted}</span>`;
+        return `<span class="score-even">${formatted}</span>`;
+    }
+
+    function isPicksLocked() {
+        const s = getSettings();
+        if (s.picksLocked) return true;
+        if (s.picksDeadline) {
+            return new Date() > new Date(s.picksDeadline);
+        }
+        return false;
+    }
+
+    function canViewOtherPicks() {
+        // Admin can always view, others can view after deadline or if picks are locked
+        if (currentUser?.isAdmin) return true;
+        return isPicksLocked();
+    }
+
+    function calculateTeamScore(picks) {
+        if (!picks || !Array.isArray(picks) || picks.length === 0) return null;
+
+        const s = getSettings();
+        const golferScores = picks.map(name => {
+            const data = getGolferScore(name);
+            return { name, ...data };
+        });
+
+        // Sort by score (ascending)
+        golferScores.sort((a, b) => a.score - b.score);
+
+        const counting = golferScores.slice(0, s.bestToCount);
+        const notCounting = golferScores.slice(s.bestToCount);
+        const total = counting.reduce((sum, g) => sum + g.score, 0);
+
+        return { golferScores, counting, notCounting, total };
+    }
+
+    // ============================================================
+    // HOME PAGE
+    // ============================================================
+    function renderHome() {
+        const userData = usersData[currentUser.username];
+        const picks = userData?.picks || [];
+        const isArray = Array.isArray(picks);
+        const pickCount = isArray ? picks.length : 0;
+        const submitted = userData?.picksSubmitted;
+        const locked = isPicksLocked();
+        const s = getSettings();
+
+        let statusHtml;
+        if (submitted && pickCount === s.picksPerTeam) {
+            statusHtml = `<span class="status-badge status-submitted">✅ Team Submitted (${pickCount}/${s.picksPerTeam} golfers)</span>`;
+        } else if (pickCount > 0) {
+            statusHtml = `<span class="status-badge status-pending">📝 Draft (${pickCount}/${s.picksPerTeam} golfers)</span>`;
+        } else {
+            statusHtml = `<span class="status-badge status-not-entered">❌ No Picks Yet</span>`;
+        }
+
+        if (locked) {
+            statusHtml += '<p style="margin-top: 10px; color: #dc3545; font-weight: bold;">🔒 Picks are locked.</p>';
+        } else if (s.picksDeadline) {
+            const dl = new Date(s.picksDeadline);
+            statusHtml += `<p style="margin-top: 10px; color: #666;">⏰ Deadline: ${dl.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>`;
+        }
+
+        // Show team preview
+        if (submitted && pickCount > 0) {
+            const teamResult = calculateTeamScore(picks);
+            if (teamResult) {
+                statusHtml += `<p style="margin-top: 15px; font-size: 1.2em;"><strong>Your Team Score: ${formatScore(teamResult.total)}</strong></p>`;
+                statusHtml += '<div style="margin-top: 10px;">';
+                teamResult.golferScores.forEach((g, i) => {
+                    const isCounting = i < s.bestToCount;
+                    statusHtml += `<div style="padding: 5px 0; ${isCounting ? 'font-weight: bold;' : 'color: #999;'}">
+                        ${isCounting ? '✅' : '➖'} ${g.name}: ${formatScore(g.score)}
+                        ${g.thru !== 'F' && g.thru !== '--' ? ` <small>(thru ${g.thru})</small>` : ''}
+                    </div>`;
+                });
+                statusHtml += '</div>';
+            }
+        }
+
+        document.getElementById('homeStatusOverview').innerHTML = statusHtml;
+    }
+
+    // ============================================================
+    // PICKS PAGE
+    // ============================================================
+    let selectedGolfers = [];
+
+    function renderPicks() {
+        const s = getSettings();
+        const userData = usersData[currentUser.username];
+        const existingPicks = userData?.picks || [];
+        const submitted = userData?.picksSubmitted;
+        const locked = isPicksLocked();
+
+        // Load existing picks
+        selectedGolfers = Array.isArray(existingPicks) ? [...existingPicks] : [];
+
+        // Deadline message
+        const deadlineDiv = document.getElementById('picksDeadlineMsg');
+        if (locked && !currentUser.isAdmin) {
+            deadlineDiv.innerHTML = '<div class="validation-error">🔒 Picks are locked. You can no longer modify your team.</div>';
+            document.getElementById('submitPicksBtn').disabled = true;
+            document.getElementById('saveDraftBtn').disabled = true;
+        } else if (submitted) {
+            deadlineDiv.innerHTML = '<div class="validation-success">✅ Your team has been submitted! You can still modify it until the deadline.</div>';
+            document.getElementById('submitPicksBtn').disabled = false;
+            document.getElementById('saveDraftBtn').disabled = false;
+        } else {
+            deadlineDiv.innerHTML = '';
+            document.getElementById('submitPicksBtn').disabled = false;
+            document.getElementById('saveDraftBtn').disabled = false;
+        }
+
+        if (locked && !currentUser.isAdmin) {
+            // Show read-only view
+            renderPicksReadOnly();
+            return;
+        }
+
+        updatePickCount();
+        renderCurrentPicks();
+        renderGolferPicker();
+    }
+
+    function renderPicksReadOnly() {
+        const s = getSettings();
+        const userData = usersData[currentUser.username];
+        const picks = userData?.picks || [];
+
+        let html = '<div style="margin-top: 15px;">';
+        if (picks.length > 0) {
+            const teamResult = calculateTeamScore(picks);
+            if (teamResult) {
+                html += `<h3>Your Team (Score: ${formatScore(teamResult.total)})</h3>`;
+                html += '<table class="team-table"><thead><tr><th>Golfer</th><th>Score</th><th>Thru</th><th>Status</th></tr></thead><tbody>';
+                teamResult.golferScores.forEach((g, i) => {
+                    const isCounting = i < s.bestToCount;
+                    html += `<tr class="${isCounting ? 'counting' : 'not-counting'}">
+                        <td>${isCounting ? '✅ ' : ''}${g.name}</td>
+                        <td>${formatScoreHtml(g.score, g.status)}</td>
+                        <td>${g.thru || '--'}</td>
+                        <td>${isCounting ? 'Counting' : 'Not counting'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
+        } else {
+            html += '<p style="color: #999;">You didn\'t submit any picks.</p>';
+        }
+        html += '</div>';
+
+        document.getElementById('currentPicksList').innerHTML = html;
+        document.getElementById('golferPicker').innerHTML = '';
+        document.getElementById('golferSearch').style.display = 'none';
+    }
+
+    function updatePickCount() {
+        const s = getSettings();
+        const el = document.getElementById('pickCountDisplay');
+        const count = selectedGolfers.length;
+        el.textContent = `${count} / ${s.picksPerTeam} golfers selected`;
+        el.className = 'pick-count';
+        if (count === s.picksPerTeam) el.classList.add('full');
+        else if (count > s.picksPerTeam) el.classList.add('over');
+    }
+
+    function renderCurrentPicks() {
+        if (selectedGolfers.length === 0) {
+            document.getElementById('currentPicksList').innerHTML = '<p style="color: #999;">No golfers selected yet. Pick from the list below.</p>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">';
+        selectedGolfers.forEach(name => {
+            const gScore = getGolferScore(name);
+            html += `<div style="background: #d4edda; border: 1px solid #28a745; border-radius: 20px; padding: 6px 14px; display: flex; align-items: center; gap: 8px;">
+                <span>${name}</span>
+                <small>${formatScore(gScore.score)}</small>
+                <button onclick="removeGolfer('${name.replace(/'/g, "\\'")}')" style="background: none; border: none; color: #dc3545; cursor: pointer; font-weight: bold; font-size: 1.2em;">×</button>
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('currentPicksList').innerHTML = html;
+    }
+
+    function renderGolferPicker() {
+        const searchTerm = (document.getElementById('golferSearch')?.value || '').toLowerCase();
+        const s = getSettings();
+        const maxPicks = s.picksPerTeam;
+
+        let golfers = golfersData || [];
+        if (searchTerm) {
+            golfers = golfers.filter(g => g.toLowerCase().includes(searchTerm));
+        }
+
+        const picker = document.getElementById('golferPicker');
+        if (golfers.length === 0) {
+            picker.innerHTML = '<p style="color: #999;">No golfers available. ' +
+                (golfersData.length === 0 ? 'Admin needs to add the tournament field.' : 'Try a different search.') + '</p>';
+            return;
+        }
+
+        let html = '';
+        golfers.forEach(name => {
+            const isSelected = selectedGolfers.includes(name);
+            const isFull = selectedGolfers.length >= maxPicks && !isSelected;
+            const gScore = getGolferScore(name);
+            const scoreDisplay = gScore.source !== 'default' ? formatScore(gScore.score) : '';
+
+            html += `<div class="golfer-option ${isSelected ? 'selected' : ''} ${isFull ? 'disabled' : ''}"
+                onclick="${isFull ? '' : `toggleGolfer('${name.replace(/'/g, "\\'")}')`}">
+                <span>${name} ${scoreDisplay ? `<small style="color: #666;">(${scoreDisplay})</small>` : ''}</span>
+                <span>${isSelected ? '✅' : ''}</span>
+            </div>`;
+        });
+        picker.innerHTML = html;
+    }
+
+    function toggleGolfer(name) {
+        const s = getSettings();
+        const idx = selectedGolfers.indexOf(name);
+        if (idx >= 0) {
+            selectedGolfers.splice(idx, 1);
+        } else {
+            if (selectedGolfers.length >= s.picksPerTeam) return;
+            selectedGolfers.push(name);
+        }
+        updatePickCount();
+        renderCurrentPicks();
+        renderGolferPicker();
+    }
+
+    function removeGolfer(name) {
+        selectedGolfers = selectedGolfers.filter(g => g !== name);
+        updatePickCount();
+        renderCurrentPicks();
+        renderGolferPicker();
+    }
+
+    function filterGolfers() {
+        renderGolferPicker();
+    }
+
+    function saveDraft() {
+        updateSyncStatus('syncing');
+        db.ref(`users/${currentUser.username}/picks`).set(selectedGolfers).then(() => {
+            const msgDiv = document.getElementById('picksMessage');
+            msgDiv.innerHTML = '<div class="validation-success">Draft saved!</div>';
+            setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
+        });
+    }
+
+    function submitPicks() {
+        const s = getSettings();
+        if (selectedGolfers.length !== s.picksPerTeam) {
+            document.getElementById('picksMessage').innerHTML =
+                `<div class="validation-error">You must select exactly ${s.picksPerTeam} golfers. Currently: ${selectedGolfers.length}</div>`;
+            return;
+        }
+
+        if (isPicksLocked() && !currentUser.isAdmin) {
+            document.getElementById('picksMessage').innerHTML =
+                '<div class="validation-error">Picks are locked!</div>';
+            return;
+        }
+
+        updateSyncStatus('syncing');
+        const updates = {};
+        updates[`users/${currentUser.username}/picks`] = selectedGolfers;
+        updates[`users/${currentUser.username}/picksSubmitted`] = true;
+        updates[`users/${currentUser.username}/submittedAt`] = new Date().toISOString();
+
+        db.ref().update(updates).then(() => {
+            document.getElementById('picksMessage').innerHTML =
+                '<div class="validation-success">✅ Team submitted successfully!</div>';
+        }).catch(err => {
+            document.getElementById('picksMessage').innerHTML =
+                `<div class="validation-error">Error: ${err.message}</div>`;
+        });
+    }
+
+    // ============================================================
+    // LEADERBOARD
+    // ============================================================
+    function renderLeaderboard() {
+        const tbody = document.querySelector('#mainLeaderboard tbody');
+        const s = getSettings();
+
+        // Determine scoring source
+        const badge = document.getElementById('scoringSourceBadge');
+        const hasAutoScores = Object.keys(scoresData).length > 0;
+        const hasManualScores = Object.keys(manualScoresData).length > 0;
+        if (hasAutoScores) { badge.className = 'scoring-source live'; badge.textContent = '🟢 Live Scores'; }
+        else if (hasManualScores) { badge.className = 'scoring-source manual'; badge.textContent = '✏️ Manual Scores'; }
+        else { badge.className = 'scoring-source none'; badge.textContent = 'No Scores'; }
+
+        // Build team scores
+        const teams = [];
+        Object.keys(usersData).forEach(username => {
+            if (username === 'admin') return;
+            const user = usersData[username];
+            if (!user.picksSubmitted) return;
+
+            const picks = user.picks || [];
+            if (!Array.isArray(picks) || picks.length === 0) return;
+
+            const result = calculateTeamScore(picks);
+            if (!result) return;
+
+            const bestGolfer = result.counting[0];
+            teams.push({
+                name: username,
+                total: result.total,
+                counting: result.counting,
+                bestGolfer: bestGolfer ? `${bestGolfer.name} (${formatScore(bestGolfer.score)})` : '--'
+            });
+        });
+
+        teams.sort((a, b) => a.total - b.total);
+
+        let html = '';
+        if (teams.length === 0) {
+            html = '<tr><td colspan="5" style="text-align: center; color: #999; padding: 30px;">No submitted teams yet.</td></tr>';
+        } else {
+            teams.forEach((team, index) => {
+                const isLeader = index === 0;
+                const medal = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+
+                html += `<tr class="${isLeader ? 'leader-row' : ''} clickable" onclick="openTeamModal('${team.name}')">
+                    <td>${index + 1}</td>
+                    <td>${medal}</td>
+                    <td><strong>${team.name}</strong></td>
+                    <td><strong>${formatScore(team.total)}</strong></td>
+                    <td>${team.bestGolfer}</td>
+                </tr>`;
+            });
+        }
+
+        tbody.innerHTML = html;
+    }
+
+    // ============================================================
+    // TEAM MODAL
+    // ============================================================
+    function openTeamModal(username) {
+        if (!canViewOtherPicks() && username !== currentUser.username) {
+            alert('Picks are still hidden until the deadline passes.');
+            return;
+        }
+
+        const user = usersData[username];
+        const picks = user?.picks || [];
+        const s = getSettings();
+
+        document.getElementById('modalTeamName').textContent = `${username}'s Team`;
+
+        if (!Array.isArray(picks) || picks.length === 0) {
+            document.getElementById('modalTeamBody').innerHTML = '<p>No picks submitted.</p>';
+        } else {
+            const result = calculateTeamScore(picks);
+            let html = `<h3 style="margin-bottom: 15px;">Team Score: <strong>${formatScore(result.total)}</strong> (best ${s.bestToCount} of ${picks.length})</h3>`;
+            html += '<table class="team-table"><thead><tr><th></th><th>Golfer</th><th>Score</th><th>Thru</th><th>Status</th></tr></thead><tbody>';
+
+            result.golferScores.forEach((g, i) => {
+                const isCounting = i < s.bestToCount;
+                html += `<tr class="${isCounting ? 'counting' : 'not-counting'}">
+                    <td>${isCounting ? '✅' : '➖'}</td>
+                    <td>${g.name}</td>
+                    <td>${formatScoreHtml(g.score, g.status)}</td>
+                    <td>${g.thru || '--'}</td>
+                    <td><small>${isCounting ? 'Counting' : 'Not counting'}${g.source === 'manual' ? ' (manual)' : g.source === 'default' ? ' (default)' : ''}</small></td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('modalTeamBody').innerHTML = html;
+        }
+
+        document.getElementById('teamModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeTeamModal() {
+        document.getElementById('teamModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // ============================================================
+    // ALL TEAMS PAGE
+    // ============================================================
+    function renderAllTeams() {
+        const container = document.getElementById('allTeamsContainer');
+        const s = getSettings();
+        const canView = canViewOtherPicks();
+
+        const users = Object.keys(usersData).filter(u => u !== 'admin').sort();
+
+        if (users.length === 0) {
+            container.innerHTML = '<p style="color: #999;">No users registered yet.</p>';
+            return;
+        }
+
+        let html = '';
+        users.forEach(username => {
+            const user = usersData[username];
+            const picks = user?.picks || [];
+            const submitted = user?.picksSubmitted;
+            const isMe = username === currentUser.username;
+            const showDetail = canView || isMe;
+
+            let statusBadge, detail = '';
+            if (submitted && Array.isArray(picks) && picks.length > 0) {
+                statusBadge = `<span class="status-badge status-submitted">✅ Submitted (${picks.length})</span>`;
+                if (showDetail) {
+                    const result = calculateTeamScore(picks);
+                    if (result) {
+                        detail = `<p style="margin-top: 10px; font-weight: bold;">Score: ${formatScore(result.total)}</p>`;
+                        detail += '<div style="margin-top: 8px; font-size: 0.85em;">';
+                        result.golferScores.forEach((g, i) => {
+                            const isCounting = i < s.bestToCount;
+                            detail += `<div style="${isCounting ? 'font-weight: bold;' : 'color: #bbb;'}">${isCounting ? '✅' : '➖'} ${g.name}: ${formatScore(g.score)}</div>`;
+                        });
+                        detail += '</div>';
+                    }
+                } else {
+                    detail = '<p style="margin-top: 10px; color: #999;">🔒 Hidden until deadline</p>';
+                }
+            } else if (Array.isArray(picks) && picks.length > 0) {
+                statusBadge = `<span class="status-badge status-pending">📝 Draft (${picks.length}/${s.picksPerTeam})</span>`;
+            } else {
+                statusBadge = '<span class="status-badge status-not-entered">❌ No Picks</span>';
+            }
+
+            html += `<div class="pick-card" onclick="${showDetail && submitted ? `openTeamModal('${username}')` : ''}">
+                <h4>${username} ${isMe ? '(You)' : ''}</h4>
+                ${statusBadge}
+                ${detail}
+            </div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ============================================================
+    // ADMIN
+    // ============================================================
+    function showAdminTab(tab) {
+        currentAdminTab = tab;
+        document.querySelectorAll('#adminTabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('[id^="adminTab-"]').forEach(div => div.classList.add('hidden'));
+
+        const tabEl = document.getElementById(`adminTab-${tab}`);
+        if (tabEl) tabEl.classList.remove('hidden');
+
+        // Activate the clicked button
+        const buttons = document.querySelectorAll('#adminTabs .tab-btn');
+        const tabNames = ['scoring', 'golfers', 'scores', 'settings', 'users', 'data'];
+        const idx = tabNames.indexOf(tab);
+        if (idx >= 0 && buttons[idx]) buttons[idx].classList.add('active');
+
+        renderAdmin();
+    }
+
+    function renderAdmin() {
+        switch (currentAdminTab) {
+            case 'scoring': renderAdminScoring(); break;
+            case 'golfers': renderAdminGolfers(); break;
+            case 'scores': renderAdminManualScores(); break;
+            case 'settings': renderAdminSettings(); break;
+            case 'users': renderAdminUsers(); break;
+        }
+    }
+
+    function renderAdminScoring() {
+        document.getElementById('scoringMode').value = scoringConfig.mode || 'manual';
+        // ESPN fields
+        document.getElementById('espnTournamentId').value = scoringConfig.espnTournamentId || '';
+        document.getElementById('espnRefreshInterval').value = scoringConfig.espnRefreshInterval || 60;
+        document.getElementById('espnCutPenalty').value = scoringConfig.espnCutPenalty || 5;
+        // Google Sheets fields
+        document.getElementById('sheetsApiUrl').value = scoringConfig.url || '';
+        document.getElementById('refreshInterval').value = scoringConfig.refreshInterval || 60;
+        document.getElementById('cutLineScore').value = settingsData.cutLineScore || 0;
+        document.getElementById('cutPenalty').value = settingsData.cutPenalty || 5;
+        toggleScoringMode();
+    }
+
+    function toggleScoringMode() {
+        const mode = document.getElementById('scoringMode').value;
+        document.getElementById('espnScoringConfig').style.display = mode === 'espn' ? 'block' : 'none';
+        document.getElementById('autoScoringConfig').style.display = mode === 'auto' ? 'block' : 'none';
+    }
+
+    function saveScoringConfig() {
+        const mode = document.getElementById('scoringMode').value;
+        const config = { mode };
+
+        if (mode === 'espn') {
+            config.espnTournamentId = document.getElementById('espnTournamentId').value.trim();
+            config.espnRefreshInterval = parseInt(document.getElementById('espnRefreshInterval').value) || 60;
+            config.espnCutPenalty = parseInt(document.getElementById('espnCutPenalty').value) || 5;
+        } else if (mode === 'auto') {
+            config.url = document.getElementById('sheetsApiUrl').value.trim();
+            config.refreshInterval = parseInt(document.getElementById('refreshInterval').value) || 60;
+        }
+
+        // Preserve fields from other modes so switching back doesn't lose config
+        config.espnTournamentId = config.espnTournamentId || scoringConfig.espnTournamentId || '';
+        config.espnRefreshInterval = config.espnRefreshInterval || scoringConfig.espnRefreshInterval || 60;
+        config.espnCutPenalty = config.espnCutPenalty !== undefined ? config.espnCutPenalty : (scoringConfig.espnCutPenalty || 5);
+        config.url = config.url || scoringConfig.url || '';
+        config.refreshInterval = config.refreshInterval || scoringConfig.refreshInterval || 60;
+
+        const updates = {};
+        updates['scoringConfig'] = config;
+        if (mode === 'auto') {
+            updates['settings/cutLineScore'] = parseInt(document.getElementById('cutLineScore').value) || 0;
+            updates['settings/cutPenalty'] = parseInt(document.getElementById('cutPenalty').value) || 5;
+        }
+
+        db.ref().update(updates).then(() => {
+            alert('Scoring config saved!');
+        });
+    }
+
+    // ---- Google Sheets force fetch ----
+    async function forceFetchNow() {
+        const url = document.getElementById('sheetsApiUrl').value.trim();
+        if (!url) { alert('Enter a URL first.'); return; }
+        const oldUrl = scoringConfig.url;
+        scoringConfig.url = url;
+        try {
+            await fetchLiveScores();
+            alert('Scores fetched and saved to Firebase!');
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+        scoringConfig.url = oldUrl;
+    }
+
+    // ---- ESPN API force fetch ----
+    async function forceEspnFetchNow() {
+        const tid = document.getElementById('espnTournamentId').value.trim();
+        if (!tid) { alert('Enter an ESPN Tournament ID first.'); return; }
+        const oldTid = scoringConfig.espnTournamentId;
+        const oldPenalty = scoringConfig.espnCutPenalty;
+        scoringConfig.espnTournamentId = tid;
+        scoringConfig.espnCutPenalty = parseInt(document.getElementById('espnCutPenalty').value) || 5;
+        try {
+            await fetchEspnScores();
+            alert('ESPN scores fetched and saved to Firebase!');
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+        scoringConfig.espnTournamentId = oldTid;
+        scoringConfig.espnCutPenalty = oldPenalty;
+    }
+
+    async function testScoringFetch() {
+        const url = document.getElementById('sheetsApiUrl').value.trim();
+        const resultDiv = document.getElementById('testFetchResult');
+        if (!url) { resultDiv.innerHTML = '<div class="validation-error">Enter a URL first.</div>'; return; }
+
+        resultDiv.innerHTML = '<p>Fetching...</p>';
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (Array.isArray(data) && data.length > 0) {
+                const headers = data[0];
+                const sampleRows = data.slice(1, 6);
+
+                // Try to detect columns
+                const headerMap = {};
+                headers.forEach((h, i) => {
+                    if (h && typeof h === 'string') headerMap[h.trim().toUpperCase()] = i;
+                });
+                const idxPlayer = findHeaderIndex(headerMap, 'PLAYER', 'NAME', 'GOLFER', 'PLAYERS');
+                const idxScore = findHeaderIndex(headerMap, 'SCORE', 'TO PAR', 'TOPAR', 'VS PAR');
+                const idxThru = findHeaderIndex(headerMap, 'THRU', 'HOLES', 'HOLE');
+
+                let html = `<div class="validation-success">✅ Success! Got ${data.length - 1} data rows.</div>`;
+                html += '<p style="margin-top: 10px;"><strong>Headers found:</strong> ' + headers.filter(h => h).join(', ') + '</p>';
+
+                // Show column detection
+                html += '<div style="margin-top: 10px; padding: 10px; background: #f0fff0; border-radius: 5px; font-size: 0.9em;">';
+                html += '<strong>Column Detection:</strong><br>';
+                html += `Player column: ${idxPlayer !== undefined ? '✅ Found (col ' + idxPlayer + ')' : '❌ Not found'}<br>`;
+                html += `Score column: ${idxScore !== undefined ? '✅ Found (col ' + idxScore + ')' : '⚠️ Not found'}<br>`;
+                html += `Thru column: ${idxThru !== undefined ? '✅ Found (col ' + idxThru + ')' : '⚠️ Not found'}<br>`;
+                html += '</div>';
+
+                // Show sample with name matching
+                if (idxPlayer !== undefined && golfersData.length > 0) {
+                    html += '<div style="margin-top: 10px;"><strong>Name Matching Preview:</strong></div>';
+                    html += '<table class="score-input-table" style="margin-top: 5px;"><thead><tr><th>ESPN Name</th><th>Matched To</th><th>Score</th></tr></thead><tbody>';
+                    sampleRows.forEach(row => {
+                        const espnName = row[idxPlayer];
+                        if (!espnName) return;
+                        const matched = matchGolferName(espnName.toString().trim());
+                        const scoreVal = idxScore !== undefined ? row[idxScore] : '—';
+                        const isExact = matched && normalizeName(matched) === normalizeName(espnName.toString().trim());
+                        html += `<tr><td>${espnName}</td><td style="color: ${isExact ? '#28a745' : '#f57c00'};">${matched || '?'} ${isExact ? '✅' : '⚠️'}</td><td>${scoreVal}</td></tr>`;
+                    });
+                    html += '</tbody></table>';
+                }
+
+                html += '<p style="margin-top: 10px;"><strong>Raw sample:</strong></p><pre style="background: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.85em;">';
+                sampleRows.forEach(row => { html += JSON.stringify(row) + '\n'; });
+                html += '</pre>';
+                resultDiv.innerHTML = html;
+            } else {
+                resultDiv.innerHTML = '<div class="validation-error">Response is not a valid array. Check the API endpoint.</div>';
+            }
+        } catch (e) {
+            resultDiv.innerHTML = `<div class="validation-error">Error: ${e.message}</div>`;
+        }
+    }
+
+    function renderAdminGolfers() {
+        const textarea = document.getElementById('golferListInput');
+        textarea.value = (golfersData || []).join('\n');
+    }
+
+    function saveGolferList() {
+        const text = document.getElementById('golferListInput').value;
+        const golfers = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+        db.ref('golfers').set(golfers).then(() => { alert(`Saved ${golfers.length} golfers!`); });
+    }
+
+    function renderAdminManualScores() {
+        const container = document.getElementById('manualScoresContainer');
+        const allGolfers = golfersData || [];
+
+        if (allGolfers.length === 0) {
+            container.innerHTML = '<p style="color: #999;">Add golfers in the "Manage Golfers" tab first.</p>';
+            return;
+        }
+
+        let html = '<table class="score-input-table"><thead><tr><th>Golfer</th><th>Score (vs par)</th><th>Status</th><th>Thru</th></tr></thead><tbody>';
+
+        allGolfers.forEach(name => {
+            const current = manualScoresData[name];
+            const autoScore = scoresData[name];
+            const scoreVal = current !== undefined && current !== null && current !== '' ?
+                (typeof current === 'object' ? current.score : current) : '';
+            const statusVal = (typeof current === 'object' ? current.status : '') || '';
+            const thruVal = (typeof current === 'object' ? current.thru : '') || '';
+
+            html += `<tr>
+                <td>${name} ${autoScore ? `<small style="color: #28a745;">(auto: ${formatScore(autoScore.score)})</small>` : ''}</td>
+                <td><input type="number" id="mscore_${CSS.escape(name)}" value="${scoreVal}" placeholder="${autoScore ? autoScore.score : '--'}"></td>
+                <td><select id="mstatus_${CSS.escape(name)}">
+                    <option value="">Active</option>
+                    <option value="cut" ${statusVal === 'cut' ? 'selected' : ''}>CUT</option>
+                    <option value="wd" ${statusVal === 'wd' ? 'selected' : ''}>WD</option>
+                    <option value="dq" ${statusVal === 'dq' ? 'selected' : ''}>DQ</option>
+                </select></td>
+                <td><input type="text" id="mthru_${CSS.escape(name)}" value="${thruVal}" placeholder="F" style="width: 60px;"></td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function saveManualScores() {
+        const allGolfers = golfersData || [];
+        const scores = {};
+
+        allGolfers.forEach(name => {
+            const scoreInput = document.getElementById(`mscore_${CSS.escape(name)}`);
+            const statusInput = document.getElementById(`mstatus_${CSS.escape(name)}`);
+            const thruInput = document.getElementById(`mthru_${CSS.escape(name)}`);
+
+            if (scoreInput && scoreInput.value !== '') {
+                scores[name] = {
+                    score: parseInt(scoreInput.value),
+                    status: statusInput?.value || 'active',
+                    thru: thruInput?.value || 'F'
+                };
+            }
+        });
+
+        db.ref('manualScores').set(scores).then(() => { alert('Manual scores saved!'); });
+    }
+
+    function renderAdminSettings() {
+        const s = getSettings();
+        document.getElementById('compName').value = s.compName || 'Masters 2026';
+        document.getElementById('picksPerTeam').value = s.picksPerTeam || 10;
+        document.getElementById('bestToCount').value = s.bestToCount || 5;
+        document.getElementById('defaultScore').value = s.defaultScore || 10;
+        document.getElementById('wdPenalty').value = s.wdPenalty || 20;
+        document.getElementById('picksDeadline').value = s.picksDeadline || '';
+        document.getElementById('picksLocked').checked = s.picksLocked || false;
+    }
+
+    function saveCompSettings() {
+        const settings = {
+            compName: document.getElementById('compName').value.trim() || 'Masters 2026',
+            picksPerTeam: parseInt(document.getElementById('picksPerTeam').value) || 10,
+            bestToCount: parseInt(document.getElementById('bestToCount').value) || 5,
+            defaultScore: parseInt(document.getElementById('defaultScore').value) || 10,
+            wdPenalty: parseInt(document.getElementById('wdPenalty').value) || 20,
+            picksDeadline: document.getElementById('picksDeadline').value || '',
+            picksLocked: document.getElementById('picksLocked').checked,
+            cutLineScore: settingsData.cutLineScore || 0,
+            cutPenalty: settingsData.cutPenalty || 5
+        };
+
+        db.ref('settings').set(settings).then(() => { alert('Settings saved!'); });
+    }
+
+    function renderAdminUsers() {
+        const container = document.getElementById('userManagement');
+        const users = Object.keys(usersData).sort();
+
+        let html = '<table class="team-table"><thead><tr><th>User</th><th>Picks</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>';
+
+        users.forEach(username => {
+            const user = usersData[username];
+            const picks = user.picks || [];
+            const pickCount = Array.isArray(picks) ? picks.length : 0;
+            const submitted = user.picksSubmitted ? '✅ Yes' : '❌ No';
+
+            html += `<tr>
+                <td><strong>${username}</strong> ${user.isAdmin ? '(Admin)' : ''}</td>
+                <td>${pickCount}</td>
+                <td>${submitted}</td>
+                <td>
+                    ${username !== 'admin' ? `
+                        <button class="btn btn-sm" onclick="resetUserPassword('${username}')">Reset PW</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${username}')">Delete</button>
+                    ` : ''}
+                </td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function resetUserPassword(username) {
+        if (!confirm(`Reset password for ${username}?`)) return;
+        db.ref(`users/${username}/password`).set('password').then(() => {
+            alert(`Password for ${username} reset to "password".`);
+        });
+    }
+
+    function deleteUser(username) {
+        if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+        if (!confirm(`Are you really sure? All picks for ${username} will be lost.`)) return;
+        db.ref(`users/${username}`).remove().then(() => { alert(`User ${username} deleted.`); });
+    }
+
+    // ============================================================
+    // DATA EXPORT / IMPORT
+    // ============================================================
+    function exportData() {
+        db.ref().once('value').then(snapshot => {
+            const data = snapshot.val();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `masterscomp_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!confirm('This will OVERWRITE all current data. Are you sure?')) {
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                db.ref().set(data).then(() => {
+                    alert('Data imported successfully!');
+                    location.reload();
+                });
+            } catch (err) {
+                alert('Invalid JSON file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function resetAllData() {
+        if (!confirm('⚠️ This will DELETE ALL DATA. Are you absolutely sure?')) return;
+        if (!confirm('Last chance! Type "RESET" in the next prompt to confirm.')) return;
+        const typed = prompt('Type RESET to confirm:');
+        if (typed !== 'RESET') { alert('Cancelled.'); return; }
+
+        db.ref().set({
+            users: { admin: { password: 'admin123', isAdmin: true, picks: [] } },
+            settings: DEFAULT_SETTINGS,
+            golfers: [],
+            scores: {},
+            manualScores: {},
+            scoringConfig: { mode: 'manual' }
+        }).then(() => {
+            alert('All data has been reset.');
+            location.reload();
+        });
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        // Allow Enter key to login
+        document.getElementById('password').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') login();
+        });
+        document.getElementById('username').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') login();
+        });
+
+        initFirebase();
+    });
+    </script>
+</body>
+</html>
