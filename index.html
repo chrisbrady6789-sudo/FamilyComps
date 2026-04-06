@@ -1205,9 +1205,9 @@
     async function fetchEspnScores() {
         const tournamentId = scoringConfig.espnTournamentId;
 
-        // Build URL — with or without specific tournament ID
+        // Use /leaderboard for specific tournament IDs, /scoreboard for auto-detect
         const url = tournamentId
-            ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tournamentId)}`
+            ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=${encodeURIComponent(tournamentId)}`
             : 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard';
         const response = await fetch(url);
         if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
@@ -1217,6 +1217,7 @@
         let event;
         if (tournamentId) {
             event = data.events && data.events.find(e => String(e.id) === String(tournamentId));
+            if (!event && data.events && data.events.length > 0) event = data.events[0];
         } else {
             event = data.events && data.events[0];
         }
@@ -1299,7 +1300,7 @@
         resultDiv.innerHTML = '<p>Fetching from ESPN API...</p>';
         try {
             const url = tid
-                ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=${encodeURIComponent(tid)}`
+                ? `https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=${encodeURIComponent(tid)}`
                 : 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard';
             const response = await fetch(url);
             if (!response.ok) throw new Error(`ESPN API returned ${response.status}`);
@@ -1308,6 +1309,7 @@
             let event;
             if (tid) {
                 event = data.events && data.events.find(e => String(e.id) === String(tid));
+                if (!event && data.events && data.events.length > 0) event = data.events[0];
             } else {
                 event = data.events && data.events[0];
             }
