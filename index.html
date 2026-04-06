@@ -421,33 +421,35 @@
             <div class="card rules-box">
                 <h3>⛳ Competition Rules - The Masters 2026</h3>
                 <ul>
-                    <li>Golfers are split into <strong>brackets</strong> (groups ranked by ability/odds).</li>
-                    <li>You pick <strong>1 golfer from each bracket</strong> to form your team.</li>
-                    <li>Your team score is calculated from the <strong>best 5</strong> golfers' scores relative to par.</li>
+                    <li>Pick <strong>1 golfer from each of the 8 brackets</strong> (brackets based on odds for top 64 players) to form your team of 8.</li>
+                    <li>Your team score is calculated from the <strong>best 4 scores out of 8</strong> (relative to par).</li>
                     <li>The <strong>lowest combined score wins</strong>.</li>
-                    <li>Golfers who <strong>miss the cut</strong> receive a penalty score (cut line + penalty strokes).</li>
-                    <li>Golfers who <strong>withdraw (WD)</strong> or are <strong>disqualified (DQ)</strong> receive a +20 penalty.</li>
-                    <li>If a golfer is not in the field / doesn't start, they receive a <strong>+10 default</strong> score.</li>
-                    <li>Picks must be submitted <strong>before the first tee time on Thursday</strong>.</li>
-                    <li>Golfers can be picked by <strong>multiple teams</strong> (no draft).</li>
+                    <li>If a golfer <strong>withdraws before the start</strong>, you get the next golfer below in the bracket (or the top golfer if at the bottom). You can also swap to another golfer in that bracket before the deadline.</li>
+                    <li>If a golfer <strong>withdraws or is disqualified during the tournament</strong>, a score of <strong>+20</strong> is recorded.</li>
+                    <li>If a golfer <strong>misses the cut</strong>, he gets <strong>+5 for each missed round</strong> (normally +10 total) added to his 2-round score.</li>
+                    <li>An extra <strong>-3 bonus</strong> is applied to the golfer who <strong>wins the tournament</strong>.</li>
+                    <li>If 2 competitors are tied, <strong>all 8 golfers</strong> on their team count to break the tie.</li>
+                    <li>Only <strong>one entry per person</strong> — entrants must be over 18 as at 01 Jan 2026.</li>
+                    <li>Picks must be submitted <strong>before 10am on Thursday 9th April</strong>.</li>
                 </ul>
             </div>
 
             <div class="card">
                 <h2>🏆 Prize Pool</h2>
-                <p>Entry Fee: €20 per person</p>
+                <p>Entry Fee: <strong>€5</strong> per person</p>
+                <p style="margin-top: 5px; color: #666; font-size: 0.9em;">Prize money and number of prizes depend on the number of entrants and will be communicated before the competition starts.</p>
                 <div class="prize-info">
                     <div class="prize-card">
                         <h3>🥇 1st</h3>
-                        <p>60% of pot</p>
+                        <p>TBC</p>
                     </div>
                     <div class="prize-card">
                         <h3>🥈 2nd</h3>
-                        <p>25% of pot</p>
+                        <p>TBC</p>
                     </div>
                     <div class="prize-card">
                         <h3>🥉 3rd</h3>
-                        <p>15% of pot</p>
+                        <p>TBC</p>
                     </div>
                 </div>
             </div>
@@ -468,7 +470,7 @@
             <div class="card">
                 <h2>⛳ Pick Your Team</h2>
                 <div id="picksDeadlineMsg"></div>
-                <div id="pickCountDisplay" class="pick-count">0 / 10 golfers selected</div>
+                <div id="pickCountDisplay" class="pick-count">0 / 8 brackets filled</div>
                 <input type="text" class="search-box" id="golferSearch" placeholder="🔍 Search golfers..." oninput="filterGolfers()">
 
                 <div id="currentPicksList" style="margin-bottom: 20px;"></div>
@@ -489,7 +491,7 @@
                 <h2>🏆 Leaderboard
                     <span id="scoringSourceBadge" class="scoring-source none">No Scores</span>
                 </h2>
-                <p style="margin-bottom: 15px; color: #666;">Best 5 scores count. Click a team to see details.</p>
+                <p style="margin-bottom: 15px; color: #666;">Best 4 scores count. Click a team to see details.</p>
                 <div class="leaderboard-wrap">
                     <table class="leaderboard" id="mainLeaderboard">
                         <thead>
@@ -497,7 +499,7 @@
                                 <th>#</th>
                                 <th></th>
                                 <th>Team</th>
-                                <th>Best 5 Total</th>
+                                <th>Best 4 Total</th>
                                 <th>Best Golfer</th>
                             </tr>
                         </thead>
@@ -658,12 +660,12 @@
                     </div>
                     <div class="form-group">
                         <label>Picks per team (auto-set from bracket count)</label>
-                        <input type="number" id="picksPerTeam" value="10" min="1" max="20" style="width: 100px;" disabled>
+                        <input type="number" id="picksPerTeam" value="8" min="1" max="20" style="width: 100px;" disabled>
                         <small style="color: #666;">This is set automatically based on the number of brackets.</small>
                     </div>
                     <div class="form-group">
                         <label>Best scores to count</label>
-                        <input type="number" id="bestToCount" value="5" min="1" max="15" style="width: 100px;">
+                        <input type="number" id="bestToCount" value="4" min="1" max="15" style="width: 100px;">
                     </div>
                     <div class="form-group">
                         <label>Default score for missing/unranked golfers</label>
@@ -682,6 +684,11 @@
                         <label>
                             <input type="checkbox" id="picksLocked"> Lock all picks immediately (override deadline)
                         </label>
+                    </div>
+                    <div class="form-group" style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #ddd;">
+                        <label>🏆 Tournament Winner (gets -3 bonus)</label>
+                        <input type="text" id="tournamentWinnerInput" placeholder="e.g. Scottie Scheffler">
+                        <small style="color: #666;">Auto-detected from ESPN if available. Enter manually to override. The winner gets -3 applied to their score.</small>
                     </div>
                     <button class="btn btn-gold" onclick="saveCompSettings()">Save Settings</button>
                 </div>
@@ -721,6 +728,31 @@
     };
 
     // ============================================================
+    // MULTI-COMPETITION SUPPORT
+    // ============================================================
+    // Competition names for the landing page
+    const COMPETITIONS = {
+        comp1: 'Competition 1',
+        comp2: 'Competition 2',
+        comp3: 'Competition 3'
+    };
+
+    // Read comp from URL: ?comp=comp1, ?comp=comp2, ?comp=comp3
+    const urlParams = new URLSearchParams(window.location.search);
+    const compId = urlParams.get('comp');
+
+    // Helper: returns a Firebase ref scoped to the current competition
+    function dbRef(path) {
+        if (!path) return db.ref(`competitions/${compId}`);
+        return db.ref(`competitions/${compId}/${path}`);
+    }
+
+    // Helper: returns a prefixed path string for use in update() objects
+    function dbPath(path) {
+        return `competitions/${compId}/${path}`;
+    }
+
+    // ============================================================
     // STATE
     // ============================================================
     let db = null;
@@ -736,6 +768,7 @@
     let scoringConfig = {};    // Scoring configuration (mode, url, etc.)
     let manualScoresData = {}; // Manual score overrides
     let lastScoreUpdateTime = null; // ISO timestamp of last score update
+    let tournamentWinner = null; // Name of tournament winner (for -3 bonus)
     let dataLoaded = false;
 
     // Auto-refresh timer
@@ -744,11 +777,13 @@
     // Default competition settings
     const DEFAULT_SETTINGS = {
         compName: 'Masters 2026',
-        picksPerTeam: 10,
-        bestToCount: 5,
+        picksPerTeam: 8,
+        bestToCount: 4,
         defaultScore: 10,
         wdPenalty: 20,
-        picksDeadline: '',
+        cutRoundPenalty: 5,
+        winnerBonus: -3,
+        picksDeadline: '2026-04-09T09:00',
         picksLocked: false,
         cutLineScore: 0,
         cutPenalty: 5
@@ -771,6 +806,17 @@
             }
             db = firebase.database();
 
+            // If no comp selected, show landing page
+            if (!compId || !COMPETITIONS[compId]) {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                showCompetitionLanding();
+                return true;
+            }
+
+            // Update header with comp name
+            const compLabel = COMPETITIONS[compId] || compId;
+            document.querySelector('.header .subtitle').textContent = `Augusta National Golf Club — ${compLabel}`;
+
             db.ref('.info/connected').on('value', (snap) => {
                 updateSyncStatus(snap.val() ? 'connected' : 'disconnected');
             });
@@ -782,6 +828,23 @@
             document.getElementById('loadingText').textContent = 'Error: ' + error.message;
             return false;
         }
+    }
+
+    function showCompetitionLanding() {
+        document.getElementById('syncStatus').classList.add('hidden');
+        const container = document.querySelector('.container');
+        let html = '<div class="card" style="max-width: 600px; margin: 30px auto; text-align: center;">';
+        html += '<h2 style="margin-bottom: 20px;">⛳ Masters 2026 Golf Comp ⛳</h2>';
+        html += '<p style="margin-bottom: 25px; color: #666;">Choose your competition to enter:</p>';
+        html += '<div style="display: flex; flex-direction: column; gap: 15px;">';
+        Object.entries(COMPETITIONS).forEach(([id, name]) => {
+            const url = window.location.pathname + '?comp=' + id;
+            html += `<a href="${url}" class="btn btn-gold" style="text-decoration: none; text-align: center; font-size: 1.2em; padding: 18px 30px;">${name}</a>`;
+        });
+        html += '</div>';
+        html += '<p style="margin-top: 25px; color: #999; font-size: 0.85em;">Each competition is independent with its own teams and leaderboard.</p>';
+        html += '</div>';
+        container.innerHTML = html;
     }
 
     function showFirebaseSetupPrompt() {
@@ -851,55 +914,76 @@
         location.reload();
     }
 
+    // Default brackets for Masters 2026
+    const DEFAULT_BRACKETS = {
+        'Bracket 1': ['Scottie Scheffler', 'Bryson DeChambeau', 'Jon Rahm', 'Rory McIlroy', 'Xander Schauffele', 'Ludvig Aberg', 'Matt Fitzpatrick', 'Cameron Young'],
+        'Bracket 2': ['Tommy Fleetwood', 'Justin Rose', 'Hideki Matsuyama', 'Patrick Reed', 'Robert MacIntyre', 'Collin Morikawa', 'Min Woo Lee', 'Brooks Koepka'],
+        'Bracket 3': ['Jordan Spieth', 'Viktor Hovland', 'Christopher Gotterup', 'Russell Henley', 'Shane Lowry', 'Akhshay Bhatia', 'Justin Thomas', 'Si Woo Kim'],
+        'Bracket 4': ['Nicolai Hojgaard', 'J.J Spaun', 'Jason Day', 'Sepp Straka', 'Patrick Cantlay', 'Jake Knapp', 'Tyrrell Hatton', 'Adam Scott'],
+        'Bracket 5': ['Jacob Bridgeman', 'Marco Penge', 'Corey Conners', 'Gary Woodland', 'Sam Burns', 'Sungjae Im', 'Harris English', 'Cameron Smith'],
+        'Bracket 6': ['Maverick McNealy', 'Max Homa', 'Daniel Berger', 'Brian Harman', 'Casey Jarvis', 'Kim Tom', 'Rasmus Hojgaard', 'Ben Griffin'],
+        'Bracket 7': ['Ryan Gerard', 'Alex Noren', 'Ryan Fox', 'Aaron Rai', 'Dustin Johnson', 'Sergio Garcia', 'Keegan Bradley', 'Kurt Kitayama'],
+        'Bracket 8': ['Wyndham Clark', 'Hao Tong Li', 'Rasmus NeergaardPetersen', 'Michael Kim', 'Max Greyserman', 'Aldrich Potgieter', 'Tom Mckibbin', 'Nico Echavarria']
+    };
+
     function setupRealtimeListeners() {
-        db.ref('users').on('value', (snapshot) => {
+        dbRef('users').on('value', (snapshot) => {
             usersData = snapshot.val() || {};
             if (!usersData.admin) {
-                db.ref('users/admin').set({ password: 'admin123', isAdmin: true, picks: [] });
+                dbRef('users/admin').set({ password: 'admin123', isAdmin: true, picks: [] });
             }
             checkDataLoaded();
             refreshCurrentPage();
         });
 
-        db.ref('golfers').on('value', (snapshot) => {
+        dbRef('golfers').on('value', (snapshot) => {
             const raw = snapshot.val();
             // Support both old flat array and new bracket object format
             if (Array.isArray(raw)) {
-                // Migrate: put all golfers in a single bracket
                 golfersData = { 'Bracket 1': raw };
+            } else if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
+                golfersData = raw;
             } else {
-                golfersData = raw || {};
+                // No golfers yet — seed with default brackets
+                golfersData = DEFAULT_BRACKETS;
+                dbRef('golfers').set(DEFAULT_BRACKETS);
+                dbRef('settings/picksPerTeam').set(8);
             }
             checkDataLoaded();
             refreshCurrentPage();
         });
 
-        db.ref('scores').on('value', (snapshot) => {
+        dbRef('scores').on('value', (snapshot) => {
             scoresData = snapshot.val() || {};
             checkDataLoaded();
             refreshCurrentPage();
         });
 
-        db.ref('settings').on('value', (snapshot) => {
+        dbRef('settings').on('value', (snapshot) => {
             settingsData = { ...DEFAULT_SETTINGS, ...(snapshot.val() || {}) };
             checkDataLoaded();
             refreshCurrentPage();
             updateHeaderTitle();
         });
 
-        db.ref('scoringConfig').on('value', (snapshot) => {
+        dbRef('scoringConfig').on('value', (snapshot) => {
             scoringConfig = snapshot.val() || { mode: 'manual' };
             setupAutoRefresh();
         });
 
-        db.ref('manualScores').on('value', (snapshot) => {
+        dbRef('manualScores').on('value', (snapshot) => {
             manualScoresData = snapshot.val() || {};
             refreshCurrentPage();
         });
 
-        db.ref('lastScoreUpdate').on('value', (snapshot) => {
+        dbRef('lastScoreUpdate').on('value', (snapshot) => {
             lastScoreUpdateTime = snapshot.val() || null;
             updateLastUpdatedDisplay();
+        });
+
+        dbRef('tournamentWinner').on('value', (snapshot) => {
+            tournamentWinner = snapshot.val() || null;
+            refreshCurrentPage();
         });
     }
 
@@ -1045,8 +1129,7 @@
                 console.warn('Live scores: could not find SCORE column, will try to infer.');
             }
 
-            const cutLine = settingsData.cutLineScore || 0;
-            const cutPenalty = settingsData.cutPenalty || 5;
+            const cutRoundPenalty = settingsData.cutRoundPenalty || 5;
             const wdPenalty = settingsData.wdPenalty || 20;
 
             data.slice(1).forEach(row => {
@@ -1076,15 +1159,15 @@
                     score = 0;
                 } else if (scoreUpper === 'CUT' || scoreUpper.includes('CUT')) {
                     status = 'cut';
-                    score = cutLine + cutPenalty;
+                    // CUT status in text format - no numeric score available, use 0 + penalty
+                    score = (cutRoundPenalty * 2);
                 } else if (scoreUpper === 'WD' || scoreUpper.includes('WD')) {
                     score = wdPenalty; status = 'wd';
                 } else if (scoreUpper === 'DQ' || scoreUpper.includes('DQ')) {
                     score = wdPenalty; status = 'dq';
                 } else if (scoreUpper === 'MC' || scoreUpper.includes('MC')) {
-                    // MC = Missed Cut (alternative to CUT)
                     status = 'cut';
-                    score = cutLine + cutPenalty;
+                    score = (cutRoundPenalty * 2);
                 } else if (scoreVal.startsWith('+')) {
                     score = parseInt(scoreVal.slice(1));
                 } else if (scoreVal.startsWith('-') || scoreVal.startsWith('−')) {
@@ -1107,8 +1190,8 @@
 
             // Save to Firebase only if scores changed
             if (Object.keys(newScores).length > 0 && scoresChanged(newScores)) {
-                await db.ref('scores').set(newScores);
-                await db.ref('lastScoreUpdate').set(new Date().toISOString());
+                await dbRef('scores').set(newScores);
+                await dbRef('lastScoreUpdate').set(new Date().toISOString());
                 const now = new Date();
                 document.getElementById('lastUpdated').textContent =
                     `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${Object.keys(newScores).length} players)`;
@@ -1143,20 +1226,14 @@
         if (!competition || !competition.competitors) throw new Error('No competitor data in ESPN response');
 
         const competitors = competition.competitors;
-        const cutPenalty = scoringConfig.espnCutPenalty || 5;
-
-        // Detect cut line from ESPN data: lowest score among cut players
-        let cutLine = 0;
-        const cutPlayers = competitors.filter(c =>
-            c.status && c.status.type && c.status.type.description &&
-            c.status.type.description.toLowerCase() === 'cut'
-        );
-        if (cutPlayers.length > 0) {
-            const cutScores = cutPlayers.map(c => parseEspnScore(c.score)).filter(s => s !== null);
-            if (cutScores.length > 0) cutLine = Math.max(...cutScores);
-        }
+        const cutRoundPenalty = scoringConfig.espnCutPenalty || 5;
+        const wdPenalty = settingsData.wdPenalty || 20;
 
         const newScores = {};
+
+        // Auto-detect tournament winner (position 1, status 'complete' or 'winner')
+        let detectedWinner = null;
+
         competitors.forEach(comp => {
             const displayName = comp.athlete && comp.athlete.displayName;
             if (!displayName) return;
@@ -1165,25 +1242,37 @@
             const statusDesc = (comp.status && comp.status.type && comp.status.type.description) || '';
             const statusLower = statusDesc.toLowerCase();
             const thru = (comp.status && comp.status.thru != null) ? String(comp.status.thru) : 'F';
+            const position = comp.sortOrder || comp.status?.position || 999;
 
             let score = parseEspnScore(comp.score);
             let status = 'active';
 
+            // Detect winner (position 1 with completed status)
+            if (position === 1 || statusLower === 'winner') {
+                detectedWinner = matchedName;
+            }
+
             if (statusLower === 'cut') {
                 status = 'cut';
-                score = (score !== null ? score : cutLine) + cutPenalty;
+                // Rule: +5 per missed round (normally 2 rounds = +10) added to their actual score
+                score = (score !== null ? score : 0) + (cutRoundPenalty * 2);
             } else if (statusLower === 'wd' || statusLower === 'withdrawn') {
                 status = 'wd';
-                score = score !== null ? score + cutPenalty : cutPenalty;
+                score = wdPenalty;
             } else if (statusLower === 'dq' || statusLower === 'disqualified') {
                 status = 'dq';
-                score = score !== null ? score + cutPenalty : cutPenalty;
+                score = wdPenalty;
             }
 
             if (score !== null && !isNaN(score)) {
                 newScores[sanitizeKey(matchedName)] = { score, status, thru: thru || 'F', today: '', displayName: matchedName };
             }
         });
+
+        // Store detected winner
+        if (detectedWinner && detectedWinner !== tournamentWinner) {
+            dbRef('tournamentWinner').set(detectedWinner);
+        }
 
         // ESPN mode is fully client-side — no Firebase writes
         if (Object.keys(newScores).length > 0) {
@@ -1277,7 +1366,7 @@
     // AUTH
     // ============================================================
     function checkLoggedIn() {
-        const saved = sessionStorage.getItem('masterscomp_currentUser');
+        const saved = sessionStorage.getItem(`masterscomp_${compId}_currentUser`);
         if (saved && usersData[saved]) {
             currentUser = { username: saved, ...usersData[saved] };
             onLoginSuccess();
@@ -1295,7 +1384,7 @@
         if (usersData[username].password !== password) { showLoginMessage('Incorrect password', 'error'); return; }
 
         currentUser = { username, ...usersData[username] };
-        sessionStorage.setItem('masterscomp_currentUser', username);
+        sessionStorage.setItem(`masterscomp_${compId}_currentUser`, username);
         onLoginSuccess();
     }
 
@@ -1309,7 +1398,7 @@
         if (usersData[username]) { showLoginMessage('Username already exists. Please login.', 'error'); return; }
 
         updateSyncStatus('syncing');
-        db.ref('users/' + username).set({
+        dbRef('users/' + username).set({
             password,
             isAdmin: false,
             picks: []
@@ -1317,7 +1406,7 @@
             showLoginMessage('Registration successful!', 'success');
             setTimeout(() => {
                 currentUser = { username, password, isAdmin: false, picks: [] };
-                sessionStorage.setItem('masterscomp_currentUser', username);
+                sessionStorage.setItem(`masterscomp_${compId}_currentUser`, username);
                 onLoginSuccess();
             }, 500);
         }).catch(err => {
@@ -1326,7 +1415,7 @@
     }
 
     function logout() {
-        sessionStorage.removeItem('masterscomp_currentUser');
+        sessionStorage.removeItem(`masterscomp_${compId}_currentUser`);
         currentUser = null;
         document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
         document.getElementById('mainNav').classList.add('hidden');
@@ -1385,7 +1474,7 @@
         if (newPw.length < 3) { msgDiv.innerHTML = '<div class="validation-error">New password must be at least 3 characters</div>'; return; }
         if (newPw !== confirm) { msgDiv.innerHTML = '<div class="validation-error">Passwords do not match</div>'; return; }
 
-        db.ref(`users/${currentUser.username}/password`).set(newPw).then(() => {
+        dbRef(`users/${currentUser.username}/password`).set(newPw).then(() => {
             msgDiv.innerHTML = '<div class="validation-success">Password updated!</div>';
             setTimeout(closeChangePasswordModal, 1500);
         });
@@ -1485,24 +1574,35 @@
 
     function getGolferScore(golferName) {
         const key = sanitizeKey(golferName);
+        const s = getSettings();
+        let result;
+
         // Manual scores take priority
         if (manualScoresData[key] !== undefined && manualScoresData[key] !== null && manualScoresData[key] !== '') {
             const manual = manualScoresData[key];
-            return {
+            result = {
                 score: typeof manual === 'object' ? manual.score : parseInt(manual),
                 status: typeof manual === 'object' ? (manual.status || 'active') : 'active',
                 thru: typeof manual === 'object' ? (manual.thru || 'F') : 'F',
                 source: 'manual'
             };
         }
-
         // Then auto-fetched scores
-        if (scoresData[key]) {
-            return { ...scoresData[key], source: 'auto' };
+        else if (scoresData[key]) {
+            result = { ...scoresData[key], source: 'auto' };
+        }
+        // Default: not found
+        else {
+            result = { score: s.defaultScore, status: 'missing', thru: '--', source: 'default' };
         }
 
-        // Default: not found
-        return { score: getSettings().defaultScore, status: 'missing', thru: '--', source: 'default' };
+        // Apply winner bonus: -3 for the Masters champion
+        if (tournamentWinner && normalizeName(golferName) === normalizeName(tournamentWinner)) {
+            result.score += (s.winnerBonus || -3);
+            result.isWinner = true;
+        }
+
+        return result;
     }
 
     function formatScore(score) {
@@ -1511,8 +1611,9 @@
         return '' + score;
     }
 
-    function formatScoreHtml(score, status) {
+    function formatScoreHtml(score, status, isWinner) {
         const formatted = formatScore(score);
+        if (isWinner) return `<span class="score-under">${formatted} 🏆</span>`;
         if (status === 'cut') return `<span class="score-cut">${formatted} (CUT)</span>`;
         if (status === 'wd') return `<span class="score-cut">${formatted} (WD)</span>`;
         if (status === 'dq') return `<span class="score-cut">${formatted} (DQ)</span>`;
@@ -1553,7 +1654,10 @@
         const notCounting = golferScores.slice(s.bestToCount);
         const total = counting.reduce((sum, g) => sum + g.score, 0);
 
-        return { golferScores, counting, notCounting, total };
+        // Tiebreaker: if tied on best 4, all 8 golfers count
+        const tiebreakerTotal = golferScores.reduce((sum, g) => sum + g.score, 0);
+
+        return { golferScores, counting, notCounting, total, tiebreakerTotal };
     }
 
     // ============================================================
@@ -1594,7 +1698,7 @@
                 teamResult.golferScores.forEach((g, i) => {
                     const isCounting = i < s.bestToCount;
                     statusHtml += `<div style="padding: 5px 0; ${isCounting ? 'font-weight: bold;' : 'color: #999;'}">
-                        ${isCounting ? '✅' : '➖'} ${g.name}: ${formatScore(g.score)}
+                        ${isCounting ? '✅' : '➖'} ${g.name}${g.isWinner ? ' 🏆' : ''}: ${formatScore(g.score)}
                         ${g.thru !== 'F' && g.thru !== '--' ? ` <small>(thru ${g.thru})</small>` : ''}
                     </div>`;
                 });
@@ -1664,7 +1768,7 @@
                     html += `<tr class="${isCounting ? 'counting' : 'not-counting'}">
                         <td><small>${bracket}</small></td>
                         <td>${isCounting ? '✅ ' : ''}${g.name}</td>
-                        <td>${formatScoreHtml(g.score, g.status)}</td>
+                        <td>${formatScoreHtml(g.score, g.status, g.isWinner)}</td>
                         <td>${g.thru || '--'}</td>
                         <td>${isCounting ? 'Counting' : 'Not counting'}</td>
                     </tr>`;
@@ -1793,7 +1897,7 @@
 
     function saveDraft() {
         updateSyncStatus('syncing');
-        db.ref(`users/${currentUser.username}/picks`).set(selectedGolfers).then(() => {
+        dbRef(`users/${currentUser.username}/picks`).set(selectedGolfers).then(() => {
             const msgDiv = document.getElementById('picksMessage');
             msgDiv.innerHTML = '<div class="validation-success">Draft saved!</div>';
             setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
@@ -1823,9 +1927,9 @@
 
         updateSyncStatus('syncing');
         const updates = {};
-        updates[`users/${currentUser.username}/picks`] = selectedGolfers;
-        updates[`users/${currentUser.username}/picksSubmitted`] = true;
-        updates[`users/${currentUser.username}/submittedAt`] = new Date().toISOString();
+        updates[dbPath(`users/${currentUser.username}/picks`)] = selectedGolfers;
+        updates[dbPath(`users/${currentUser.username}/picksSubmitted`)] = true;
+        updates[dbPath(`users/${currentUser.username}/submittedAt`)] = new Date().toISOString();
 
         db.ref().update(updates).then(() => {
             document.getElementById('picksMessage').innerHTML =
@@ -1868,12 +1972,17 @@
             teams.push({
                 name: username,
                 total: result.total,
+                tiebreakerTotal: result.tiebreakerTotal,
                 counting: result.counting,
                 bestGolfer: bestGolfer ? `${bestGolfer.name} (${formatScore(bestGolfer.score)})` : '--'
             });
         });
 
-        teams.sort((a, b) => a.total - b.total);
+        teams.sort((a, b) => {
+            if (a.total !== b.total) return a.total - b.total;
+            // Tiebreaker: all 8 golfers count
+            return a.tiebreakerTotal - b.tiebreakerTotal;
+        });
 
         let html = '';
         if (teams.length === 0) {
@@ -2079,9 +2188,9 @@
                     <td>${isCounting ? '✅' : '➖'}</td>
                     <td><small>${bracket}</small></td>
                     <td>${g.name}</td>
-                    <td>${formatScoreHtml(g.score, g.status)}</td>
+                    <td>${formatScoreHtml(g.score, g.status, g.isWinner)}</td>
                     <td>${g.thru || '--'}</td>
-                    <td><small>${isCounting ? 'Counting' : 'Not counting'}${g.source === 'manual' ? ' (manual)' : g.source === 'default' ? ' (default)' : ''}</small></td>
+                    <td><small>${isCounting ? 'Counting' : 'Not counting'}${g.source === 'manual' ? ' (manual)' : g.source === 'default' ? ' (default)' : ''}${g.isWinner ? ' 🏆' : ''}</small></td>
                 </tr>`;
             });
 
@@ -2227,10 +2336,10 @@
         config.refreshInterval = config.refreshInterval || scoringConfig.refreshInterval || 60;
 
         const updates = {};
-        updates['scoringConfig'] = config;
+        updates[dbPath('scoringConfig')] = config;
         if (mode === 'auto') {
-            updates['settings/cutLineScore'] = parseInt(document.getElementById('cutLineScore').value) || 0;
-            updates['settings/cutPenalty'] = parseInt(document.getElementById('cutPenalty').value) || 5;
+            updates[dbPath('settings/cutLineScore')] = parseInt(document.getElementById('cutLineScore').value) || 0;
+            updates[dbPath('settings/cutPenalty')] = parseInt(document.getElementById('cutPenalty').value) || 5;
         }
 
         db.ref().update(updates).then(() => {
@@ -2397,9 +2506,9 @@
         });
 
         const bracketCount = Object.keys(brackets).length;
-        db.ref('golfers').set(brackets).then(() => {
+        dbRef('golfers').set(brackets).then(() => {
             // Auto-update picksPerTeam to match bracket count
-            db.ref('settings/picksPerTeam').set(bracketCount);
+            dbRef('settings/picksPerTeam').set(bracketCount);
             alert(`Saved ${bracketCount} brackets with ${totalGolfers} golfers!`);
         });
     }
@@ -2460,34 +2569,41 @@
             }
         });
 
-        db.ref('manualScores').set(scores).then(() => { alert('Manual scores saved!'); });
+        dbRef('manualScores').set(scores).then(() => { alert('Manual scores saved!'); });
     }
 
     function renderAdminSettings() {
         const s = getSettings();
         document.getElementById('compName').value = s.compName || 'Masters 2026';
-        document.getElementById('picksPerTeam').value = s.picksPerTeam || 10;
-        document.getElementById('bestToCount').value = s.bestToCount || 5;
+        document.getElementById('picksPerTeam').value = s.picksPerTeam || 8;
+        document.getElementById('bestToCount').value = s.bestToCount || 4;
         document.getElementById('defaultScore').value = s.defaultScore || 10;
         document.getElementById('wdPenalty').value = s.wdPenalty || 20;
         document.getElementById('picksDeadline').value = s.picksDeadline || '';
         document.getElementById('picksLocked').checked = s.picksLocked || false;
+        document.getElementById('tournamentWinnerInput').value = tournamentWinner || '';
     }
 
     function saveCompSettings() {
         const settings = {
             compName: document.getElementById('compName').value.trim() || 'Masters 2026',
-            picksPerTeam: parseInt(document.getElementById('picksPerTeam').value) || 10,
-            bestToCount: parseInt(document.getElementById('bestToCount').value) || 5,
+            picksPerTeam: parseInt(document.getElementById('picksPerTeam').value) || 8,
+            bestToCount: parseInt(document.getElementById('bestToCount').value) || 4,
             defaultScore: parseInt(document.getElementById('defaultScore').value) || 10,
             wdPenalty: parseInt(document.getElementById('wdPenalty').value) || 20,
+            cutRoundPenalty: settingsData.cutRoundPenalty || 5,
+            winnerBonus: settingsData.winnerBonus || -3,
             picksDeadline: document.getElementById('picksDeadline').value || '',
             picksLocked: document.getElementById('picksLocked').checked,
             cutLineScore: settingsData.cutLineScore || 0,
             cutPenalty: settingsData.cutPenalty || 5
         };
 
-        db.ref('settings').set(settings).then(() => { alert('Settings saved!'); });
+        const winnerInput = document.getElementById('tournamentWinnerInput').value.trim();
+        const updates = {};
+        updates[dbPath('settings')] = settings;
+        updates[dbPath('tournamentWinner')] = winnerInput || null;
+        db.ref().update(updates).then(() => { alert('Settings saved!'); });
     }
 
     function renderAdminUsers() {
@@ -2521,7 +2637,7 @@
 
     function resetUserPassword(username) {
         if (!confirm(`Reset password for ${username}?`)) return;
-        db.ref(`users/${username}/password`).set('password').then(() => {
+        dbRef(`users/${username}/password`).set('password').then(() => {
             alert(`Password for ${username} reset to "password".`);
         });
     }
@@ -2529,20 +2645,20 @@
     function deleteUser(username) {
         if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
         if (!confirm(`Are you really sure? All picks for ${username} will be lost.`)) return;
-        db.ref(`users/${username}`).remove().then(() => { alert(`User ${username} deleted.`); });
+        dbRef(`users/${username}`).remove().then(() => { alert(`User ${username} deleted.`); });
     }
 
     // ============================================================
     // DATA EXPORT / IMPORT
     // ============================================================
     function exportData() {
-        db.ref().once('value').then(snapshot => {
+        dbRef().once('value').then(snapshot => {
             const data = snapshot.val();
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `masterscomp_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `masterscomp_${compId}_backup_${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
         });
@@ -2561,7 +2677,7 @@
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                db.ref().set(data).then(() => {
+                dbRef().set(data).then(() => {
                     alert('Data imported successfully!');
                     location.reload();
                 });
@@ -2579,7 +2695,7 @@
         const typed = prompt('Type RESET to confirm:');
         if (typed !== 'RESET') { alert('Cancelled.'); return; }
 
-        db.ref().set({
+        dbRef().set({
             users: { admin: { password: 'admin123', isAdmin: true, picks: [] } },
             settings: DEFAULT_SETTINGS,
             golfers: {},
@@ -2596,13 +2712,11 @@
     // INIT
     // ============================================================
     document.addEventListener('DOMContentLoaded', () => {
-        // Allow Enter key to login
-        document.getElementById('password').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') login();
-        });
-        document.getElementById('username').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') login();
-        });
+        // Allow Enter key to login (guard in case landing page removes them)
+        const pwInput = document.getElementById('password');
+        const unInput = document.getElementById('username');
+        if (pwInput) pwInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') login(); });
+        if (unInput) unInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') login(); });
 
         initFirebase();
     });
