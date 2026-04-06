@@ -1693,18 +1693,30 @@
 
         // Show team preview
         if (submitted && pickCount > 0) {
-            const teamResult = calculateTeamScore(picks);
-            if (teamResult) {
-                statusHtml += `<p style="margin-top: 15px; font-size: 1.2em;"><strong>Your Team Score: ${formatScore(teamResult.total)}</strong></p>`;
+            const hasAnyScores = Object.keys(scoresData).length > 0 || Object.keys(manualScoresData).length > 0;
+            if (hasAnyScores) {
+                const teamResult = calculateTeamScore(picks);
+                if (teamResult) {
+                    statusHtml += `<p style="margin-top: 15px; font-size: 1.2em;"><strong>Your Team Score: ${formatScore(teamResult.total)}</strong></p>`;
+                    statusHtml += '<div style="margin-top: 10px;">';
+                    teamResult.golferScores.forEach((g, i) => {
+                        const isCounting = i < s.bestToCount;
+                        statusHtml += `<div style="padding: 5px 0; ${isCounting ? 'font-weight: bold;' : 'color: #999;'}">
+                            ${isCounting ? '✅' : '➖'} ${g.name}${g.isWinner ? ' 🏆' : ''}: ${formatScore(g.score)}
+                            ${g.thru !== 'F' && g.thru !== '--' ? ` <small>(thru ${g.thru})</small>` : ''}
+                        </div>`;
+                    });
+                    statusHtml += '</div>';
+                }
+            } else {
+                statusHtml += '<p style="margin-top: 15px; color: #666;">Your team:</p>';
                 statusHtml += '<div style="margin-top: 10px;">';
-                teamResult.golferScores.forEach((g, i) => {
-                    const isCounting = i < s.bestToCount;
-                    statusHtml += `<div style="padding: 5px 0; ${isCounting ? 'font-weight: bold;' : 'color: #999;'}">
-                        ${isCounting ? '✅' : '➖'} ${g.name}${g.isWinner ? ' 🏆' : ''}: ${formatScore(g.score)}
-                        ${g.thru !== 'F' && g.thru !== '--' ? ` <small>(thru ${g.thru})</small>` : ''}
-                    </div>`;
+                picks.forEach(name => {
+                    const bracket = getGolferBracket(name) || '';
+                    statusHtml += `<div style="padding: 3px 0;">⛳ ${name} <small style="color: #999;">(${bracket})</small></div>`;
                 });
                 statusHtml += '</div>';
+                statusHtml += '<p style="margin-top: 10px; color: #888; font-size: 0.9em;">Scores will appear once the tournament starts.</p>';
             }
         }
 
@@ -1953,9 +1965,10 @@
         const badge = document.getElementById('scoringSourceBadge');
         const hasAutoScores = Object.keys(scoresData).length > 0;
         const hasManualScores = Object.keys(manualScoresData).length > 0;
+        const hasAnyScores = hasAutoScores || hasManualScores;
         if (hasAutoScores) { badge.className = 'scoring-source live'; badge.textContent = '🟢 Live Scores'; }
         else if (hasManualScores) { badge.className = 'scoring-source manual'; badge.textContent = '✏️ Manual Scores'; }
-        else { badge.className = 'scoring-source none'; badge.textContent = 'No Scores'; }
+        else { badge.className = 'scoring-source none'; badge.textContent = 'No Scores Yet'; }
 
         // Build team scores
         const teams = [];
@@ -1967,39 +1980,41 @@
             const picks = user.picks || [];
             if (!Array.isArray(picks) || picks.length === 0) return;
 
-            const result = calculateTeamScore(picks);
-            if (!result) return;
+            const result = hasAnyScores ? calculateTeamScore(picks) : null;
 
-            const bestGolfer = result.counting[0];
             teams.push({
                 name: username,
-                total: result.total,
-                tiebreakerTotal: result.tiebreakerTotal,
-                counting: result.counting,
-                bestGolfer: bestGolfer ? `${bestGolfer.name} (${formatScore(bestGolfer.score)})` : '--'
+                total: result ? result.total : null,
+                tiebreakerTotal: result ? result.tiebreakerTotal : null,
+                counting: result ? result.counting : [],
+                bestGolfer: result && result.counting[0] ? `${result.counting[0].name} (${formatScore(result.counting[0].score)})` : '--'
             });
         });
 
-        teams.sort((a, b) => {
-            if (a.total !== b.total) return a.total - b.total;
-            // Tiebreaker: all 8 golfers count
-            return a.tiebreakerTotal - b.tiebreakerTotal;
-        });
+        // Only sort by score if scores exist
+        if (hasAnyScores) {
+            teams.sort((a, b) => {
+                if (a.total !== b.total) return a.total - b.total;
+                return a.tiebreakerTotal - b.tiebreakerTotal;
+            });
+        } else {
+            teams.sort((a, b) => a.name.localeCompare(b.name));
+        }
 
         let html = '';
         if (teams.length === 0) {
             html = '<tr><td colspan="5" style="text-align: center; color: #999; padding: 30px;">No submitted teams yet.</td></tr>';
         } else {
             teams.forEach((team, index) => {
-                const isLeader = index === 0;
-                const medal = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+                const isLeader = hasAnyScores && index === 0;
+                const medal = hasAnyScores ? (index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '') : '';
 
                 html += `<tr class="${isLeader ? 'leader-row' : ''} clickable" onclick="openTeamModal('${team.name}')">
-                    <td>${index + 1}</td>
+                    <td>${hasAnyScores ? index + 1 : '-'}</td>
                     <td>${medal}</td>
                     <td><strong>${team.name}</strong></td>
-                    <td><strong>${formatScore(team.total)}</strong></td>
-                    <td>${team.bestGolfer}</td>
+                    <td><strong>${hasAnyScores ? formatScore(team.total) : '--'}</strong></td>
+                    <td>${hasAnyScores ? team.bestGolfer : '--'}</td>
                 </tr>`;
             });
         }
