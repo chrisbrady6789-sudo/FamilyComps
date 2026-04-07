@@ -921,7 +921,7 @@
         'Bracket 3': ['Jordan Spieth', 'Viktor Hovland', 'Christopher Gotterup', 'Russell Henley', 'Shane Lowry', 'Akhshay Bhatia', 'Justin Thomas', 'Si Woo Kim'],
         'Bracket 4': ['Nicolai Hojgaard', 'J.J Spaun', 'Jason Day', 'Sepp Straka', 'Patrick Cantlay', 'Jake Knapp', 'Tyrrell Hatton', 'Adam Scott'],
         'Bracket 5': ['Jacob Bridgeman', 'Marco Penge', 'Corey Conners', 'Gary Woodland', 'Sam Burns', 'Sungjae Im', 'Harris English', 'Cameron Smith'],
-        'Bracket 6': ['Maverick McNealy', 'Max Homa', 'Daniel Berger', 'Brian Harman', 'Casey Jarvis', 'Kim Tom', 'Rasmus Hojgaard', 'Ben Griffin'],
+        'Bracket 6': ['Maverick McNealy', 'Max Homa', 'Daniel Berger', 'Brian Harman', 'Casey Jarvis', 'Tom Kim', 'Rasmus Hojgaard', 'Ben Griffin'],
         'Bracket 7': ['Ryan Gerard', 'Alex Noren', 'Ryan Fox', 'Aaron Rai', 'Dustin Johnson', 'Sergio Garcia', 'Keegan Bradley', 'Kurt Kitayama'],
         'Bracket 8': ['Wyndham Clark', 'Hao Tong Li', 'Rasmus NeergaardPetersen', 'Michael Kim', 'Max Greyserman', 'Aldrich Potgieter', 'Tom Mckibbin', 'Nico Echavarria']
     };
@@ -1961,6 +1961,14 @@
         const tbody = document.querySelector('#mainLeaderboard tbody');
         const s = getSettings();
 
+        // Hide all teams until deadline (except for admin)
+        if (!canViewOtherPicks()) {
+            document.getElementById('scoringSourceBadge').className = 'scoring-source none';
+            document.getElementById('scoringSourceBadge').textContent = 'Hidden';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999; padding: 30px;">🔒 Teams and scores are hidden until the picks deadline passes.</td></tr>';
+            return;
+        }
+
         // Determine scoring source
         const badge = document.getElementById('scoringSourceBadge');
         const hasAutoScores = Object.keys(scoresData).length > 0;
@@ -2642,6 +2650,7 @@
                 <td>
                     ${username !== 'admin' ? `
                         <button class="btn btn-sm" onclick="resetUserPassword('${username}')">Reset PW</button>
+                        <button class="btn btn-sm" onclick="editUserPicks('${username}')">Edit Picks</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteUser('${username}')">Delete</button>
                     ` : ''}
                 </td>
@@ -2656,6 +2665,47 @@
         if (!confirm(`Reset password for ${username}?`)) return;
         dbRef(`users/${username}/password`).set('password').then(() => {
             alert(`Password for ${username} reset to "password".`);
+        });
+    }
+
+    function editUserPicks(username) {
+        const user = usersData[username];
+        if (!user) return;
+        const picks = user.picks || [];
+        const allGolfers = getAllGolfers();
+
+        let html = `<h3>Edit Picks for ${username}</h3>`;
+        if (picks.length === 0) {
+            html += '<p>No picks to edit.</p>';
+        } else {
+            html += '<table class="team-table"><thead><tr><th>#</th><th>Current Pick</th><th>Change To</th></tr></thead><tbody>';
+            picks.forEach((pick, i) => {
+                const inBrackets = allGolfers.includes(pick);
+                const warning = inBrackets ? '' : ' ⚠️ not in brackets';
+                html += `<tr><td>${i + 1}</td><td>${pick}${warning}</td><td>
+                    <select id="editPick_${i}" style="padding: 6px; width: 200px;">
+                        <option value="${pick}">${pick} (keep)</option>`;
+                allGolfers.forEach(g => {
+                    if (g !== pick) html += `<option value="${g}">${g}</option>`;
+                });
+                html += `</select></td></tr>`;
+            });
+            html += '</tbody></table>';
+        }
+        html += `<div style="margin-top: 15px;"><button class="btn btn-gold" onclick="saveUserPicks('${username}', ${picks.length})">Save Changes</button> <button class="btn" onclick="renderAdminUsers()">Cancel</button></div>`;
+        document.getElementById('userManagement').innerHTML = html;
+    }
+
+    function saveUserPicks(username, count) {
+        const newPicks = [];
+        for (let i = 0; i < count; i++) {
+            const sel = document.getElementById(`editPick_${i}`);
+            if (sel) newPicks.push(sel.value);
+        }
+        if (!confirm(`Update picks for ${username}?\n\nNew picks:\n${newPicks.join('\n')}`)) return;
+        dbRef(`users/${username}/picks`).set(newPicks).then(() => {
+            alert(`Picks updated for ${username}.`);
+            renderAdminUsers();
         });
     }
 
