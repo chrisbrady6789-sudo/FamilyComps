@@ -106,8 +106,6 @@
             background: linear-gradient(90deg, #fdd835 0%, #fff8dc 50%, #fdd835 100%);
             font-weight: bold; border: 2px solid #f9a825;
         }
-        .leaderboard tr:nth-child(2) td { background: #f0f0f0; }
-        .leaderboard tr:nth-child(3) td { background: #faf3e0; }
         .leaderboard tr:hover td { background: #e8f5e9; }
         .leaderboard .trend-up { color: #28a745; font-weight: bold; }
         .leaderboard .trend-down { color: #dc3545; font-weight: bold; }
@@ -941,10 +939,11 @@
     const COMPETITIONS = {
         comp1: 'BradyGolf',
         comp2: 'Spanish7',
-        comp3: 'WorkMates'
+        comp3: 'WorkMates',
+        comp4: 'TestComp'
     };
 
-    // Read comp from URL: ?comp=comp1, ?comp=comp2, ?comp=comp3
+    // Read comp from URL: ?comp=comp1, ?comp=comp2, ?comp=comp3, ?comp=comp4
     const urlParams = new URLSearchParams(window.location.search);
     const compId = urlParams.get('comp');
 
@@ -1260,7 +1259,12 @@
     // Normalize a golfer name for matching (lowercase, strip accents, extra spaces)
     function normalizeName(name) {
         return name.toString().trim()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip combining accents
+            .replace(/\u00f8/g, 'o').replace(/\u00d8/g, 'O') // ø → o, Ø → O
+            .replace(/\u00e6/g, 'ae').replace(/\u00c6/g, 'AE') // æ → ae, Æ → AE
+            .replace(/\u00f0/g, 'd').replace(/\u00d0/g, 'D') // ð → d, Ð → D
+            .replace(/\u00df/g, 'ss') // ß → ss
+            .replace(/[-'']/g, '') // strip hyphens and apostrophes
             .replace(/\s+/g, ' ')
             .toLowerCase();
     }
@@ -1388,7 +1392,7 @@
                     newScores[sanitizeKey(matchedName)] = {
                         score,
                         status,
-                        thru: thru || 'F',
+                        thru: (thru !== '' && thru !== undefined) ? thru : '--',
                         today: todayRaw ? todayRaw.toString().trim() : '',
                         displayName: matchedName
                     };
@@ -1437,6 +1441,10 @@
         const cutRoundPenalty = scoringConfig.espnCutPenalty || 5;
         const wdPenalty = settingsData.wdPenalty || 20;
 
+        // Check if tournament has started yet
+        const eventState = (event.status && event.status.type && event.status.type.state) || '';
+        const isTournamentPre = eventState === 'pre';
+
         const newScores = {};
 
         // Auto-detect tournament winner (position 1, status 'complete' or 'winner')
@@ -1449,11 +1457,14 @@
             const matchedName = matchGolferName(displayName);
             const statusDesc = (comp.status && comp.status.type && comp.status.type.description) || '';
             const statusLower = statusDesc.toLowerCase();
-            const thru = (comp.status && comp.status.thru != null) ? String(comp.status.thru) : 'F';
+            const hasCompStatus = comp.status && Object.keys(comp.status).length > 0;
+            const rawThru = (hasCompStatus && comp.status.thru != null) ? comp.status.thru : null;
+            const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : String(rawThru)) : (isTournamentPre ? '--' : (hasCompStatus ? 'F' : '--'));
             const position = comp.sortOrder || comp.status?.position || 999;
 
             let score = parseEspnScore(comp.score);
-            let status = 'active';
+            // If tournament hasn't started or competitor has no status, mark as scheduled
+            let status = (isTournamentPre || (!hasCompStatus && statusLower === '')) ? 'scheduled' : 'active';
 
             // Detect winner (position 1 with completed status)
             if (position === 1 || statusLower === 'winner') {
@@ -1473,7 +1484,7 @@
             }
 
             if (score !== null && !isNaN(score)) {
-                newScores[sanitizeKey(matchedName)] = { score, status, thru: thru || 'F', today: '', displayName: matchedName };
+                newScores[sanitizeKey(matchedName)] = { score, status, thru: thru || '--', today: '', displayName: matchedName };
             }
         });
 
@@ -1553,12 +1564,15 @@
                 // Sample data table
                 const sample = competitors.slice(0, 10);
                 html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:0.85em;">';
+                const evtState = (event.status && event.status.type && event.status.type.state) || '';
+                const isPre = evtState === 'pre';
                 html += '<tr style="background:#eee;"><th style="padding:4px;text-align:left;">Player</th><th>Score</th><th>Thru</th><th>Status</th></tr>';
                 sample.forEach(c => {
                     const name = (c.athlete && c.athlete.displayName) || '?';
                     const score = c.score != null ? c.score : '-';
-                    const thru = (c.status && c.status.thru != null) ? c.status.thru : 'F';
-                    const st = (c.status && c.status.type && c.status.type.description) || 'active';
+                    const hasStatus = c.status && Object.keys(c.status).length > 0;
+                    const thru = (hasStatus && c.status.thru != null) ? c.status.thru : (isPre ? '--' : (hasStatus ? 'F' : '--'));
+                    const st = (hasStatus && c.status.type && c.status.type.description) ? c.status.type.description : (isPre ? 'Scheduled' : '--');
                     html += `<tr><td style="padding:3px;">${name}</td><td style="text-align:center;">${score}</td><td style="text-align:center;">${thru}</td><td style="text-align:center;">${st}</td></tr>`;
                 });
                 html += '</table>';
@@ -1990,7 +2004,7 @@
                         <td><small>${bracket}</small></td>
                         <td>${isCounting ? '✅ ' : ''}${g.name}</td>
                         <td>${formatScoreHtml(g.score, g.status, g.isWinner)}</td>
-                        <td>${g.thru || '--'}</td>
+                        <td>${g.thru != null && g.thru !== '' ? g.thru : '--'}</td>
                         <td>${isCounting ? 'Counting' : 'Not counting'}</td>
                     </tr>`;
                 });
@@ -2329,7 +2343,7 @@
         const myPicks = (userData?.picks && Array.isArray(userData.picks)) ? userData.picks : [];
 
         // Sort: active players by score (ascending), then cut/wd/dq, then pending
-        const statusOrder = { active: 0, cut: 1, wd: 2, dq: 2, missing: 3, pending: 4, none: 4 };
+        const statusOrder = { active: 0, scheduled: 0, cut: 1, wd: 2, dq: 2, missing: 3, pending: 4, none: 4 };
         players.sort((a, b) => {
             const sa = statusOrder[a.status] ?? 3;
             const sb = statusOrder[b.status] ?? 3;
@@ -2348,7 +2362,7 @@
             const bracket = getGolferBracket(p.name);
 
             // Calculate position (handle ties)
-            if (p.score !== null && (p.status === 'active' || p.status === 'auto')) {
+            if (p.score !== null && (p.status === 'active' || p.status === 'auto' || p.status === 'scheduled')) {
                 if (p.score !== lastScore) {
                     pos = idx + 1;
                     tied = 0;
@@ -2358,18 +2372,19 @@
                 lastScore = p.score;
             }
 
-            const posDisplay = (p.status === 'active' || p.status === 'auto') && p.score !== null
+            const posDisplay = (p.status === 'active' || p.status === 'auto' || p.status === 'scheduled') && p.score !== null
                 ? (tied > 0 ? `T${pos}` : pos) : '';
 
             let statusDisplay = '';
             if (p.status === 'cut') statusDisplay = '<span style="color: #dc3545;">CUT</span>';
             else if (p.status === 'wd') statusDisplay = '<span style="color: #dc3545;">WD</span>';
             else if (p.status === 'dq') statusDisplay = '<span style="color: #dc3545;">DQ</span>';
+            else if (p.status === 'scheduled') statusDisplay = '<span style="color: #2196F3;">Scheduled</span>';
             else if (p.status === 'pending' || p.status === 'none') statusDisplay = '<span style="color: #999;">--</span>';
             else statusDisplay = '<span style="color: #28a745;">Active</span>';
 
             const scoreHtml = p.score !== null ? formatScoreHtml(p.score, p.status) : '<span style="color: #999;">--</span>';
-            const thru = (p.thru && p.thru !== '--') ? p.thru : (p.status === 'active' && p.score !== null ? 'F' : '--');
+            const thru = (p.thru != null && p.thru !== '' && p.thru !== '--') ? p.thru : (p.status === 'active' && p.score !== null ? 'F' : '--');
 
             const rowStyle = isMyPick
                 ? 'background: linear-gradient(90deg, #d4edda 0%, #e8f5e9 100%); border-left: 4px solid #0a3d0a;'
@@ -2421,7 +2436,7 @@
                     <td><small>${bracket}</small></td>
                     <td>${g.name}</td>
                     <td>${formatScoreHtml(g.score, g.status, g.isWinner)}</td>
-                    <td>${g.thru || '--'}</td>
+                    <td>${g.thru != null && g.thru !== '' ? g.thru : '--'}</td>
                     <td><small>${isCounting ? 'Counting' : 'Not counting'}${g.source === 'manual' ? ' (manual)' : g.source === 'default' ? ' (default)' : ''}${g.isWinner ? ' 🏆' : ''}</small></td>
                 </tr>`;
             });
@@ -3001,13 +3016,14 @@
     // ============================================================
     function initAdBanner() {
         // Determine which ads to show based on compId
-        // comp1: all 3 | comp2: ger only | comp3: frank only | landing: none
+        // comp1: all 3 | comp2: ger only | comp3: frank only | comp4: none | landing: none
         if (!compId) return;
 
         const adConfig = {
             comp1: ['ad-ger-slide', 'ad-frank-slide', 'ad-bets-slide'],
             comp2: ['ad-ger-slide'],
-            comp3: ['ad-frank-slide']
+            comp3: ['ad-frank-slide'],
+            comp4: []
         };
 
         const allowedAds = adConfig[compId];
