@@ -1434,10 +1434,30 @@
         const competitors = competition.competitors;
         const cutRoundPenalty = scoringConfig.espnCutPenalty || 5;
         const wdPenalty = settingsData.wdPenalty || 20;
+        const eventId = event.id || competition.id;
 
         // Check if tournament has started yet
         const eventState = (event.status && event.status.type && event.status.type.state) || '';
         const isTournamentPre = eventState === 'pre';
+
+        // The scoreboard endpoint doesn't include thru/status detail — fetch from core API
+        const statusMap = {};
+        if (!isTournamentPre && eventId) {
+            try {
+                const statusFetches = competitors.map(comp => {
+                    const compId = comp.id;
+                    if (!compId) return Promise.resolve(null);
+                    const statusUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${eventId}/competitions/${eventId}/competitors/${compId}/status`;
+                    return fetch(statusUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+                });
+                const results = await Promise.all(statusFetches);
+                results.forEach((st, i) => {
+                    if (st && competitors[i]) statusMap[competitors[i].id] = st;
+                });
+            } catch (e) {
+                console.warn('Failed to fetch detailed statuses from core API:', e);
+            }
+        }
 
         const newScores = {};
 
@@ -1449,16 +1469,38 @@
             if (!displayName) return;
 
             const matchedName = matchGolferName(displayName);
-            const statusDesc = (comp.status && comp.status.type && comp.status.type.description) || '';
+
+            // Use core API status if available, fall back to scoreboard status
+            const coreStatus = statusMap[comp.id] || {};
+            const hasCoreStatus = Object.keys(coreStatus).length > 0;
+            const statusDesc = (hasCoreStatus && coreStatus.type && coreStatus.type.description) || (comp.status && comp.status.type && comp.status.type.description) || '';
             const statusLower = statusDesc.toLowerCase();
-            const hasCompStatus = comp.status && Object.keys(comp.status).length > 0;
-            const rawThru = (hasCompStatus && comp.status.thru != null) ? comp.status.thru : null;
-            const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : String(rawThru)) : (isTournamentPre ? '--' : (hasCompStatus ? 'F' : '--'));
-            const position = comp.sortOrder || comp.status?.position || 999;
+
+            // Thru from core API
+            const rawThru = hasCoreStatus && coreStatus.thru != null ? coreStatus.thru : null;
+            const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : String(rawThru)) : (isTournamentPre ? '--' : '--');
+
+            const position = (hasCoreStatus && coreStatus.position && coreStatus.position.displayName)
+                ? coreStatus.position.displayName
+                : (comp.sortOrder || 999);
 
             let score = parseEspnScore(comp.score);
-            // If tournament hasn't started or competitor has no status, mark as scheduled
-            let status = (isTournamentPre || (!hasCompStatus && statusLower === '')) ? 'scheduled' : 'active';
+
+            // Determine status
+            let status;
+            if (isTournamentPre) {
+                status = 'scheduled';
+            } else if (statusLower === 'in progress') {
+                status = 'active';
+            } else if (statusLower === 'complete' || statusLower === 'completed') {
+                status = 'active';
+            } else if (statusLower === 'scheduled') {
+                status = 'scheduled';
+            } else if (hasCoreStatus) {
+                status = 'active';
+            } else {
+                status = 'scheduled';
+            }
 
             // Detect winner (position 1 with completed status)
             if (position === 1 || statusLower === 'winner') {
@@ -1555,18 +1597,35 @@
                     html += '</ul></details>';
                 }
 
-                // Sample data table
+                // Sample data table — fetch core API statuses for sample
                 const sample = competitors.slice(0, 10);
-                html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:0.85em;">';
                 const evtState = (event.status && event.status.type && event.status.type.state) || '';
                 const isPre = evtState === 'pre';
+                const evtId = event.id || (competition && competition.id);
+
+                let sampleStatuses = {};
+                if (!isPre && evtId) {
+                    try {
+                        const fetches = sample.map(c => {
+                            if (!c.id) return Promise.resolve(null);
+                            return fetch(`https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${evtId}/competitions/${evtId}/competitors/${c.id}/status`)
+                                .then(r => r.ok ? r.json() : null).catch(() => null);
+                        });
+                        const results = await Promise.all(fetches);
+                        results.forEach((st, i) => { if (st && sample[i]) sampleStatuses[sample[i].id] = st; });
+                    } catch (e) { /* ignore */ }
+                }
+
+                html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:0.85em;">';
                 html += '<tr style="background:#eee;"><th style="padding:4px;text-align:left;">Player</th><th>Score</th><th>Thru</th><th>Status</th></tr>';
                 sample.forEach(c => {
                     const name = (c.athlete && c.athlete.displayName) || '?';
                     const score = c.score != null ? c.score : '-';
-                    const hasStatus = c.status && Object.keys(c.status).length > 0;
-                    const thru = (hasStatus && c.status.thru != null) ? c.status.thru : (isPre ? '--' : (hasStatus ? 'F' : '--'));
-                    const st = (hasStatus && c.status.type && c.status.type.description) ? c.status.type.description : (isPre ? 'Scheduled' : '--');
+                    const cs = sampleStatuses[c.id] || {};
+                    const hasCS = Object.keys(cs).length > 0;
+                    const rawThru = hasCS && cs.thru != null ? cs.thru : null;
+                    const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : rawThru) : '--';
+                    const st = (hasCS && cs.type && cs.type.description) ? cs.type.description : (isPre ? 'Scheduled' : '--');
                     html += `<tr><td style="padding:3px;">${name}</td><td style="text-align:center;">${score}</td><td style="text-align:center;">${thru}</td><td style="text-align:center;">${st}</td></tr>`;
                 });
                 html += '</table>';
