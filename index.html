@@ -566,7 +566,7 @@
         <button onclick="showPage('leaderboard')" id="nav-leaderboard">Leaderboard</button>
         <button onclick="showPage('tournament')" id="nav-tournament">Tournament</button>
         <button onclick="showPage('teams')" id="nav-teams">All Teams</button>
-        <button onclick="showPage('admin')" id="nav-admin" class="hidden">Admin</button>
+        <button onclick="showPage('admin')" id="nav-admin" class="hidden" style="display:none!important">Admin</button>
     </div>
 
     <!-- Team Detail Modal -->
@@ -608,7 +608,7 @@
 
     <div class="container">
         <!-- Login Page -->
-        <div id="loginPage" class="login-container hidden">
+        <div id="loginPage" class="login-container hidden" style="display:none!important">
             <div class="card">
                 <h2>🔐 Login / Register</h2>
                 <div id="loginMessage"></div>
@@ -651,11 +651,6 @@
             <div class="card" id="prizePoolCard">
                 <h2>🏆 Prize Pool</h2>
                 <div id="prizePoolContent"></div>
-            </div>
-
-            <div class="card">
-                <h2>🔑 Account</h2>
-                <button class="btn" onclick="showChangePasswordModal()" style="margin-top: 5px;">Change Password</button>
             </div>
 
             <div class="card">
@@ -1642,13 +1637,28 @@
     // AUTH
     // ============================================================
     function checkLoggedIn() {
-        const saved = sessionStorage.getItem(`masterscomp_${compId}_currentUser`);
-        if (saved && usersData[saved]) {
-            currentUser = { username: saved, ...usersData[saved] };
-            onLoginSuccess();
+        // Competition has started — no login required. Everyone enters as a guest viewer.
+        // Admin access is granted only via ?admin=true in the URL.
+        const adminParam = new URLSearchParams(window.location.search).get('admin');
+        const isAdmin = adminParam === 'true';
+
+        if (isAdmin) {
+            // Admin mode: try to restore saved admin session, or use the admin account
+            const saved = sessionStorage.getItem(`masterscomp_${compId}_currentUser`);
+            if (saved && usersData[saved] && usersData[saved].isAdmin) {
+                currentUser = { username: saved, ...usersData[saved] };
+            } else if (usersData['admin']) {
+                currentUser = { username: 'admin', ...usersData['admin'], isAdmin: true };
+                sessionStorage.setItem(`masterscomp_${compId}_currentUser`, 'admin');
+            } else {
+                currentUser = { username: 'admin', isAdmin: true, picks: [] };
+            }
         } else {
-            document.getElementById('loginPage').classList.remove('hidden');
+            // Guest mode: auto-login as a read-only viewer
+            currentUser = { username: 'guest', isAdmin: false, isGuest: true, picks: [] };
         }
+
+        onLoginSuccess();
     }
 
     function login() {
@@ -1707,16 +1717,21 @@
         document.getElementById('loginPage').classList.add('hidden');
         document.getElementById('mainNav').classList.remove('hidden');
 
+        // Admin nav hidden — access is via ?admin=true URL param only
         if (currentUser.isAdmin) {
+            document.getElementById('nav-admin').style.cssText = '';
             document.getElementById('nav-admin').classList.remove('hidden');
         } else {
-            document.getElementById('nav-admin').classList.add('hidden');
+            document.getElementById('nav-admin').style.display = 'none';
         }
+        // Hide "My Team" for guests — they have no team to view
+        const picksNav = document.getElementById('nav-picks');
+        if (picksNav) picksNav.style.display = currentUser.isGuest ? 'none' : '';
 
-        document.getElementById('userInfo').innerHTML = `
-            <span>Welcome, <strong>${currentUser.username}</strong>${currentUser.isAdmin ? ' (Admin)' : ''}</span>
-            <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
-        `;
+        document.getElementById('userInfo').innerHTML = currentUser.isGuest
+            ? `<span style="color:#888;font-size:0.9em;">👁 Live Competition</span>`
+            : `<span>Welcome, <strong>${currentUser.username}</strong>${currentUser.isAdmin ? ' 🔑 (Admin)' : ''}</span>
+               <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>`;
 
         showPage('home');
     }
@@ -1900,6 +1915,8 @@
     }
 
     function isPicksLocked() {
+        // Competition has started — picks are always locked for non-admin users.
+        if (!currentUser?.isAdmin) return true;
         const s = getSettings();
         if (s.picksLocked) return true;
         if (s.picksDeadline) {
