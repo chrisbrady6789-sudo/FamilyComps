@@ -591,15 +591,15 @@
                 <div id="changePasswordMessage"></div>
                 <div class="form-group">
                     <label for="currentPassword">Current Password</label>
-                    <input type="password" id="currentPassword" placeholder="Enter current password">
+                    <input type="password" id="currentPassword" placeholder="Enter current password" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" placeholder="Enter new password">
+                    <input type="password" id="newPassword" placeholder="Enter new password" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password" autocomplete="off">
                 </div>
                 <button class="btn btn-gold" onclick="changePassword()" style="width: 100%;">Update Password</button>
             </div>
@@ -614,11 +614,11 @@
                 <div id="loginMessage"></div>
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="Enter your name" autocomplete="username">
+                    <input type="text" id="username" placeholder="Enter your name" autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+                    <input type="password" id="password" placeholder="Enter password" autocomplete="off">
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button class="btn" onclick="login()">Login</button>
@@ -1961,6 +1961,20 @@
                             <h3>🐗 Bogey Prize — Last Place</h3>
                             <p>Free entry to the next competition</p>
                             <p style="margin-top: 4px; font-size: 0.85em; color: #555;">Sponsored by <a href="https://gerbradyfinancial.ie/index.html" target="_blank" rel="noopener noreferrer" style="color: #0a3d0a; font-weight: bold;">Ger Brady Financial Services</a></p>
+                        </div>
+                    </div>`;
+            } else if (compId === 'comp3') {
+                prizeEl.innerHTML = `
+                    <p class="prize-pool-header">Entry Fee: <strong>\u20ac5</strong> per person \u2014 12 teams</p>
+                    <p><span class="prize-pool-total">\ud83d\udcb0 \u20ac60 Prize Pool</span></p>
+                    <div class="prize-info" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="prize-card">
+                            <h3>\ud83e\udd47 1st</h3>
+                            <p class="prize-amount">\u20ac45</p>
+                        </div>
+                        <div class="prize-card">
+                            <h3>\ud83e\udd48 2nd</h3>
+                            <p class="prize-amount">\u20ac15</p>
                         </div>
                     </div>`;
             } else {
