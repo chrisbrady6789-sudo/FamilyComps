@@ -181,12 +181,21 @@
         .rules-box li { margin-bottom: 8px; }
 
         /* ============ PRIZE CARDS ============ */
-        .prize-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        .prize-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
         .prize-card {
             background: linear-gradient(135deg, #fdd835 0%, #f9a825 100%);
             padding: 20px; border-radius: 10px; text-align: center; color: #003300;
         }
-        .prize-card h3 { font-size: 1.5em; }
+        .prize-card h3 { font-size: 1.3em; margin-bottom: 5px; }
+        .prize-card .prize-amount { font-size: 2em; font-weight: bold; }
+        .prize-card.bogey-card {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            grid-column: 1 / -1;
+            padding: 15px 20px;
+        }
+        .prize-card.bogey-card h3 { font-size: 1.1em; margin-bottom: 3px; }
+        .prize-pool-header { font-size: 1.05em; margin-bottom: 5px; }
+        .prize-pool-total { display: inline-block; background: #003300; color: #fdd835; padding: 4px 14px; border-radius: 20px; font-weight: bold; font-size: 1.1em; margin-top: 8px; }
 
         /* ============ ADMIN ============ */
         .admin-section {
@@ -639,24 +648,9 @@
                 </ul>
             </div>
 
-            <div class="card">
+            <div class="card" id="prizePoolCard">
                 <h2>🏆 Prize Pool</h2>
-                <p>Entry Fee: <strong>€5</strong> per person</p>
-                <p style="margin-top: 5px; color: #666; font-size: 0.9em;">Prize money and number of prizes depend on the number of entrants and will be communicated before the competition starts.</p>
-                <div class="prize-info">
-                    <div class="prize-card">
-                        <h3>🥇 1st</h3>
-                        <p>TBC</p>
-                    </div>
-                    <div class="prize-card">
-                        <h3>🥈 2nd</h3>
-                        <p>TBC</p>
-                    </div>
-                    <div class="prize-card">
-                        <h3>🥉 3rd</h3>
-                        <p>TBC</p>
-                    </div>
-                </div>
+                <div id="prizePoolContent"></div>
             </div>
 
             <div class="card">
@@ -1942,6 +1936,44 @@
         }
 
         document.getElementById('homeStatusOverview').innerHTML = statusHtml;
+
+        // Prize pool — comp-specific
+        const prizeEl = document.getElementById('prizePoolContent');
+        if (prizeEl) {
+            if (compId === 'comp1') {
+                prizeEl.innerHTML = `
+                    <p class="prize-pool-header">Entry Fee: <strong>€5</strong> per person — 17 teams</p>
+                    <p><span class="prize-pool-total">💰 €85 Prize Pool</span></p>
+                    <div class="prize-info">
+                        <div class="prize-card">
+                            <h3>🥇 1st</h3>
+                            <p class="prize-amount">€50</p>
+                        </div>
+                        <div class="prize-card">
+                            <h3>🥈 2nd</h3>
+                            <p class="prize-amount">€25</p>
+                        </div>
+                        <div class="prize-card">
+                            <h3>🥉 3rd</h3>
+                            <p class="prize-amount">€10</p>
+                        </div>
+                        <div class="prize-card bogey-card">
+                            <h3>🐗 Bogey Prize — Last Place</h3>
+                            <p>Free entry to the next competition</p>
+                            <p style="margin-top: 4px; font-size: 0.85em; color: #555;">Sponsored by <a href="https://gerbradyfinancial.ie/index.html" target="_blank" rel="noopener noreferrer" style="color: #0a3d0a; font-weight: bold;">Ger Brady Financial Services</a></p>
+                        </div>
+                    </div>`;
+            } else {
+                prizeEl.innerHTML = `
+                    <p>Entry Fee: <strong>€5</strong> per person</p>
+                    <p style="margin-top: 5px; color: #666; font-size: 0.9em;">Prize money and number of prizes depend on the number of entrants and will be communicated before the competition starts.</p>
+                    <div class="prize-info">
+                        <div class="prize-card"><h3>🥇 1st</h3><p>TBC</p></div>
+                        <div class="prize-card"><h3>🥈 2nd</h3><p>TBC</p></div>
+                        <div class="prize-card"><h3>🥉 3rd</h3><p>TBC</p></div>
+                    </div>`;
+            }
+        }
     }
 
     // ============================================================
