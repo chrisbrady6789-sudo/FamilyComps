@@ -1283,14 +1283,18 @@
         });
         if (partial) return partial;
 
-        // Last name match as fallback
+        // Last name match as fallback (require first initial to match too)
         const espnParts = normalized.split(' ');
         const espnLast = espnParts[espnParts.length - 1];
+        const espnFirst = espnParts[0] || '';
         const lastNameMatches = golfers.filter(g => {
             const gParts = normalizeName(g).split(' ');
             return gParts[gParts.length - 1] === espnLast;
         });
-        if (lastNameMatches.length === 1) return lastNameMatches[0];
+        if (lastNameMatches.length === 1) {
+            const matchFirst = normalizeName(lastNameMatches[0]).split(' ')[0] || '';
+            if (espnFirst[0] === matchFirst[0]) return lastNameMatches[0];
+        }
 
         // No match - use ESPN name as-is
         return espnName.toString().trim();
