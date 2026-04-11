@@ -1439,8 +1439,10 @@
         const eventState = (event.status && event.status.type && event.status.type.state) || '';
         const isTournamentPre = eventState === 'pre';
 
-        // The scoreboard endpoint doesn't include thru/status detail — fetch from core API
+        // Fetch core API status for every competitor (gives us "Missed Cut", "In Progress", etc.)
+        // Also fetch score from core API for cut players (comp.score on scoreboard is stroke total, not to-par)
         const statusMap = {};
+        const coreScoreMap = {};
         if (!isTournamentPre && eventId) {
             try {
                 const statusFetches = competitors.map(comp => {
@@ -1453,14 +1455,33 @@
                 results.forEach((st, i) => {
                     if (st && competitors[i]) statusMap[competitors[i].id] = st;
                 });
+
+                // For any competitor whose status includes 'cut', fetch their actual to-par score
+                // from the core score endpoint (scoreboard comp.score is stroke total for cut players)
+                const cutCompetitors = competitors.filter(comp => {
+                    const st = statusMap[comp.id];
+                    const desc = (st && st.type && st.type.description) || '';
+                    return desc.toLowerCase().includes('cut') && !desc.toLowerCase().includes('made cut');
+                });
+                if (cutCompetitors.length > 0) {
+                    const scoreFetches = cutCompetitors.map(comp => {
+                        const scoreUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${eventId}/competitions/${eventId}/competitors/${comp.id}/score`;
+                        return fetch(scoreUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+                    });
+                    const scoreResults = await Promise.all(scoreFetches);
+                    scoreResults.forEach((sc, i) => {
+                        if (sc && cutCompetitors[i]) {
+                            // displayValue is like "+5" or "-2" — proper to-par score
+                            coreScoreMap[cutCompetitors[i].id] = sc.displayValue || sc.completedRoundsDisplayValue || null;
+                        }
+                    });
+                }
             } catch (e) {
                 console.warn('Failed to fetch detailed statuses from core API:', e);
             }
         }
 
         const newScores = {};
-
-        // Auto-detect tournament winner (position 1, status 'complete' or 'winner')
         let detectedWinner = null;
 
         competitors.forEach(comp => {
@@ -1469,26 +1490,42 @@
 
             const matchedName = matchGolferName(displayName);
 
-            // Use core API status if available, fall back to scoreboard status
             const coreStatus = statusMap[comp.id] || {};
             const hasCoreStatus = Object.keys(coreStatus).length > 0;
-            const statusDesc = (hasCoreStatus && coreStatus.type && coreStatus.type.description) || (comp.status && comp.status.type && comp.status.type.description) || '';
+            const statusDesc = (hasCoreStatus && coreStatus.type && coreStatus.type.description)
+                || (comp.status && comp.status.type && comp.status.type.description) || '';
             const statusLower = statusDesc.toLowerCase();
 
             // Thru from core API
             const rawThru = hasCoreStatus && coreStatus.thru != null ? coreStatus.thru : null;
-            const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : String(rawThru)) : (isTournamentPre ? '--' : '--');
+            const thru = rawThru != null ? (Number(rawThru) >= 18 ? 'F' : String(rawThru)) : '--';
 
             const position = (hasCoreStatus && coreStatus.position && coreStatus.position.displayName)
                 ? coreStatus.position.displayName
                 : (comp.sortOrder || 999);
 
+            // Default: parse score from scoreboard (works for active players)
             let score = parseEspnScore(comp.score);
 
             // Determine status
             let status;
             if (isTournamentPre) {
                 status = 'scheduled';
+            } else if (statusLower.includes('missed cut') || (statusLower.includes('cut') && !statusLower.includes('made cut'))) {
+                // --- CUT PLAYER ---
+                // The scoreboard comp.score for cut players is stroke total (e.g. 149), NOT to-par.
+                // Use the core score endpoint displayValue instead (e.g. "+5").
+                // Then add the cut penalty on top.
+                status = 'cut';
+                const coreScoreStr = coreScoreMap[comp.id];
+                const baseScore = coreScoreStr != null ? parseEspnScore(coreScoreStr) : score;
+                score = (baseScore !== null && !isNaN(baseScore) ? baseScore : 0) + (cutRoundPenalty * 2);
+            } else if (statusLower === 'wd' || statusLower === 'withdrawn') {
+                status = 'wd';
+                score = wdPenalty;
+            } else if (statusLower === 'dq' || statusLower === 'disqualified') {
+                status = 'dq';
+                score = wdPenalty;
             } else if (statusLower === 'in progress') {
                 status = 'active';
             } else if (statusLower === 'complete' || statusLower === 'completed') {
@@ -1504,18 +1541,6 @@
             // Detect winner (position 1 with completed status)
             if (position === 1 || statusLower === 'winner') {
                 detectedWinner = matchedName;
-            }
-
-            if (statusLower === 'cut') {
-                status = 'cut';
-                // Rule: +5 per missed round (normally 2 rounds = +10) added to their actual score
-                score = (score !== null ? score : 0) + (cutRoundPenalty * 2);
-            } else if (statusLower === 'wd' || statusLower === 'withdrawn') {
-                status = 'wd';
-                score = wdPenalty;
-            } else if (statusLower === 'dq' || statusLower === 'disqualified') {
-                status = 'dq';
-                score = wdPenalty;
             }
 
             if (score !== null && !isNaN(score)) {
@@ -1536,6 +1561,7 @@
             refreshCurrentPage();
         }
     }
+
 
     function parseEspnScore(scoreStr) {
         if (scoreStr == null) return null;
