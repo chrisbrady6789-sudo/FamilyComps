@@ -554,7 +554,7 @@
     <!-- Header -->
     <div class="header">
         <h1>⛳ PGA Championship 2026 Golf Comp ⛳</h1>
-        <div class="subtitle">Quail Hollow Club, Charlotte</div>
+        <div class="subtitle">Aronimink Golf Club, Philadelphia</div>
         <div id="lastUpdated"></div>
         <div class="user-info" id="userInfo"></div>
     </div>
@@ -640,7 +640,7 @@
                     <li>Only <strong>one entry per person</strong> — entrants must be <strong>over 18</strong> as at 01 Jan 2026.</li>
                     <li>The <strong>entry fee is €5</strong> — please Revolut the entry fee when submitting your team.</li>
                     <li>Prize money and number of prizes will depend on the number of entrants and will be communicated before competition starts.</li>
-                    <li>Picks must be submitted <strong>before 9am GMT on Thursday 15th May 2026</strong>.</li>
+                    <li>Picks must be submitted <strong>before 9am GMT on Thursday 14th May 2026</strong>.</li>
                 </ul>
             </div>
 
@@ -974,7 +974,7 @@
         wdPenalty: 20,
         cutRoundPenalty: 5,
         winnerBonus: -3,
-        picksDeadline: '2026-05-15T09:00',
+        picksDeadline: '2026-05-14T09:00',
         picksLocked: false,
         cutLineScore: 0,
         cutPenalty: 5
@@ -1005,7 +1005,7 @@
             }
 
             // Update header with comp name
-            document.querySelector('.header .subtitle').textContent = `Quail Hollow Club, Charlotte`;
+            document.querySelector('.header .subtitle').textContent = `Aronimink Golf Club, Philadelphia`;
 
             db.ref('.info/connected').on('value', (snap) => {
                 updateSyncStatus(snap.val() ? 'connected' : 'disconnected');
