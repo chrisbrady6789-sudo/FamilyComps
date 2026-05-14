@@ -1672,7 +1672,7 @@
         if (saved && usersData[saved]) {
             currentUser = { username: saved, ...usersData[saved] };
             onLoginSuccess();
-        } else if (isPicksLocked()) {
+        } else if (isPicksLocked() && !urlParams.get('login')) {
             // Tournament has started — show leaderboard without requiring login
             currentUser = { username: 'viewer', isGuest: true, picks: [] };
             onLoginSuccess();
